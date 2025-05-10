@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+virtualenv/
+*.egg-info/
+.python-version
+
+# IDE / Editor specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Node / Expo specific (for your frontend)
+frontend/native/node_modules/
+frontend/native/.expo/
+frontend/native/npm-debug.log*
+frontend/native/yarn-debug.log*
+frontend/native/yarn-error.log*
+frontend/native/web-build/ # If you don't want to commit the build output directly
+
+# Backend specific
+backend/instance/ # Flask instance folder, can contain sensitive config or DB files
+# backend/venv/ # Already covered by general venv rules, but can be explicit
+
+# Docker (if you have local docker build cache or files you don't want to commit)
+.dockerignore # This is a separate file for docker build context, but good to be aware of
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+
+# Environment variables file (VERY IMPORTANT)
+.env
+backend/.env
+frontend/native/.env
+# *.env # More general, but be careful not to ignore actual template files like .env.example
+
+# Build artifacts
+dist/
+build/
+*.zip
+*.tar.gz
+
+# Log files
+*.log
+logs/
