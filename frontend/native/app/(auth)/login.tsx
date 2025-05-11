@@ -199,7 +199,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
           )}
           {googleLoading ? (
-            <ActivityIndicator size="large" color="#DB4437" className="mb-4" />
+            <ActivityIndicator size="large" color="#f59e0b" className="mb-4" />
           ) : (
             <TouchableOpacity
               onPress={onSignInWithGooglePress}
@@ -212,7 +212,7 @@ export default function LoginScreen() {
         </View>
 
         <View className="flex-row mt-8 justify-center">
-          <Text className="text-gray-600">Don't have an account? </Text>
+          <Text className="text-amber-900">Don't have an account? </Text>
           <TouchableOpacity
             onPress={() => router.push('/(auth)/signup')}
             disabled={loading || googleLoading}>
