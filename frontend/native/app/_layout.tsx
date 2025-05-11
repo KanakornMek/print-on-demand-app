@@ -31,7 +31,7 @@ const tokenCache = {
 
 export default function RootLayout() {
   return (
-    <ClerkProvider tokenCache={tokenCache} publishableKey={CLERK_PUBLISHABLE_KEY}>
+    <ClerkProvider tokenCache={tokenCache} publishableKey={CLERK_PUBLISHABLE_KEY}> 
         {/* <CartProvider> */}
           {/* <ThemeProvider> */}
             <RootNavigation />
@@ -39,19 +39,19 @@ export default function RootLayout() {
         {/* </CartProvider> */}
     </ClerkProvider>
   );
-}
+} // Wrap app around clerk to use SignedIn SignedOut
 
 function RootNavigation() {
 
   return (
     <>
-      <SignedIn>
+      <SignedIn> {/* Show this (main app) if user is signed in */}
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="product/[id]" options={{ title: 'Product Details' }} />
         </Stack>
       </SignedIn>
-      <SignedOut>
+      <SignedOut> {/* Show this (authentication) if user is signed out */}
         <Stack>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         </Stack>
