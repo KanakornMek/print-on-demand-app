@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from flask import Blueprint, abort, current_app, jsonify, request
-from .models import Item, User, db
+from .models import Item, User, Product, ProductCategory, ProductVariant, db
 from .auth import clerk_auth_required
 from svix import Webhook, WebhookVerificationError
 import os
@@ -188,4 +188,27 @@ def add_item():
 
     except Exception as e:
         db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@main_bp.route('/api/categories')
+def get_categories():
+    try:
+        categories = ProductCategory.query.all()
+        if not categories:
+            return jsonify({"error": "No categories found"}), 404
+        categories_data = [category.to_dict() for category in categories]
+
+        return jsonify({"data" : categories_data})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@main_bp.route('/api/products/<product_id>', methods=["GET"])
+def get_product_by_id(product_id):
+    try:
+        product = Product.query.filter_by(id=product_id).first()
+        if not product:
+            return jsonify({"error": "Product not found"}), 404
+
+        return jsonify(product.to_dict())
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
