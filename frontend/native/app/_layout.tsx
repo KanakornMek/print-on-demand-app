@@ -46,7 +46,7 @@ function RootNavigation() {
   const { isLoaded, isSignedIn } = useAuth();
   if (!isLoaded) {
     return (
-      <View className="flex-1 items-center justify-center">
+      <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );
