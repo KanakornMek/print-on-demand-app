@@ -48,7 +48,7 @@ function RootNavigation() {
       <SignedIn> {/* Show this (main app) if user is signed in */}
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="product/[id]" options={{ title: 'Product Details' }} />
+          <Stack.Screen name="product/[id]" options={{ title: 'Product Details', headerShown: false }} />
         </Stack>
       </SignedIn>
       <SignedOut> {/* Show this (authentication) if user is signed out */}
