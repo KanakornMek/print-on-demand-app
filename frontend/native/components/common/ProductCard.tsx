@@ -5,11 +5,12 @@ interface Props {
     name: string;
     creator: string;
     price: number;
+    onPress?: () => void;
 }
 
-export default function ProductCard({image, name, creator, price} : Props) {
+export default function ProductCard({image, name, creator, price, onPress} : Props) {
     return (
-        <Pressable className={'rounded-3xl w-[48%] h-[16rem] border-solid overflow-hidden mb-[16px] shadow-sm'}>
+        <Pressable className={'rounded-3xl w-[48%] h-[16rem] border-solid overflow-hidden mb-[16px] shadow-sm'} onPress={onPress}>
             <View className='bg-slate-200 justify-center items-center h-[80%]'>
                 <Text> {image} </Text>
             </View>

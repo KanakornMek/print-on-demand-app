@@ -91,7 +91,7 @@ export default function HomeScreen() {
               numColumns={2}
               data = {data0}
               renderItem = { ({item}) => (
-                  <ProductCard image={item.image} name={item.name} creator={item.creator} price={item.price}></ProductCard>
+                  <ProductCard image={item.image} name={item.name} creator={item.creator} price={item.price} onPress={()=>{router.push('/product/123')}}></ProductCard>
                   
                 )
               } 
