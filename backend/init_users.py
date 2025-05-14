@@ -1,0 +1,3 @@
+from helper import sync_all_clerk_users_to_db
+
+sync_all_clerk_users_to_db()
