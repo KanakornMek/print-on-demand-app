@@ -41,6 +41,30 @@ export default function StoreDetailScreen() {
           creator: 'creator4',
           price: 250
         },
+        {
+            image : 'img3',
+            name: 'name3',
+            creator: 'creator3',
+            price: 150
+          },
+          {
+            image : 'img4',
+            name: 'name4',
+            creator: 'creator4',
+            price: 250
+          },
+          {
+            image : 'img3',
+            name: 'name3',
+            creator: 'creator3',
+            price: 150
+          },
+          {
+            image : 'img4',
+            name: 'name4',
+            creator: 'creator4',
+            price: 250
+          },
     ]
 
     return (
@@ -76,9 +100,9 @@ export default function StoreDetailScreen() {
                     </View>
                     <Text className="font-normal text-amber-900 text-base my-2">{data.bio}</Text>
                 </View>
-                <View className='flex-1 px-[16px] w-full items-center pt-[16px]'>
+                <View className='flex-1 px-[16px] w-full items-center'>
                     <FlatList
-                        className='w-full flex-1'
+                        className='w-full flex-1 pt-[16px]'
                         columnWrapperClassName='justify-between items-center w-full'
                         numColumns={2}
                         data = {data0}
