@@ -1,8 +1,8 @@
-"""Made schema
+"""empty message
 
-Revision ID: e61cb7513106
+Revision ID: 52e376cd09e0
 Revises: 
-Create Date: 2025-05-12 16:44:42.649926
+Create Date: 2025-05-14 18:09:10.148998
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'e61cb7513106'
+revision = '52e376cd09e0'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -48,8 +48,7 @@ def upgrade():
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('clerk_user_id'),
-    sa.UniqueConstraint('email'),
-    sa.UniqueConstraint('username')
+    sa.UniqueConstraint('email')
     )
     op.create_table('addresses',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -85,7 +84,7 @@ def upgrade():
     sa.Column('total_amount', sa.Float(), nullable=False),
     sa.Column('subtotal', sa.Float(), nullable=True),
     sa.Column('tax_amount', sa.Float(), nullable=True),
-    sa.Column('payment_method_token', sa.String(length=255), nullable=True),
+    sa.Column('payment_method', sa.String(length=255), nullable=True),
     sa.Column('tracking_number', sa.String(length=255), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),

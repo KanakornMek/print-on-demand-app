@@ -1,6 +1,7 @@
 import React from 'react';
+import { Text } from 'react-native';
 import { Stack } from 'expo-router';
-import { ClerkProvider, SignedIn, SignedOut } from '@clerk/clerk-expo';
+import { ClerkProvider, SignedIn, SignedOut, useAuth } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
 // import { CartProvider } from '@/contexts/CartContext'; 
 // import { ThemeProvider } from '@/contexts/ThemeContext'; 
@@ -42,16 +43,24 @@ export default function RootLayout() {
 } // Wrap app around clerk to use SignedIn SignedOut
 
 function RootNavigation() {
-
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
   return (
     <>
-      <SignedIn> {/* Show this (main app) if user is signed in */}
+      <SignedIn> 
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="product/[id]" options={{ title: 'Product Details', headerShown: false }} />
+          <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="store/[id]" options={{ headerShown: false }} />
         </Stack>
       </SignedIn>
-      <SignedOut> {/* Show this (authentication) if user is signed out */}
+      <SignedOut> 
         <Stack>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         </Stack>

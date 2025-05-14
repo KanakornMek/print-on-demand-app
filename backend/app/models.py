@@ -7,7 +7,7 @@ class User(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     clerk_user_id = db.Column(db.String(255), nullable=False, unique=True)
-    username = db.Column(db.String(255), nullable=False, unique=True)
+    username = db.Column(db.String(255), nullable=False)
     firstname = db.Column(db.String(255), nullable=False)
     lastname = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), nullable=False, unique=True)
@@ -83,7 +83,7 @@ class ProductVariant(db.Model):
     color = db.Column(db.String(255))
     size = db.Column(db.String(255))
     price_modifier = db.Column(db.Float, default=0.0)
-    stock_status = db.Column(db.String(50)) #"in_stock", "out_of_stock", "preorder"
+    stock_status = db.Column(db.String(50)) #"in_stock", "out_of_stock"
     stock_quantity = db.Column(db.Integer)
     image_url = db.Column(db.String(255))
 
@@ -176,7 +176,7 @@ class Order(db.Model):
     total_amount = db.Column(db.Float, nullable=False)
     subtotal = db.Column(db.Float)
     tax_amount = db.Column(db.Float)
-    payment_method_token = db.Column(db.String(255))
+    payment_method = db.Column(db.String(255))
     tracking_number = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
@@ -201,7 +201,7 @@ class Order(db.Model):
             "total_amount": self.total_amount,
             "subtotal": self.subtotal,
             "tax_amount": self.tax_amount,
-            "payment_method_token": self.payment_method_token,
+            "payment_method": self.payment_method,
             "tracking_number": self.tracking_number,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
@@ -216,7 +216,7 @@ class OrderItem(db.Model):
     product_name_snapshot = db.Column(db.String(255), nullable=False) 
     variant_details_snapshot = db.Column(db.Text) 
     quantity = db.Column(db.Integer, nullable=False)
-    unit_price_snapshot = db.Column(db.Float, nullable=False) # Price at the time of order
+    unit_price_snapshot = db.Column(db.Float, nullable=False)
     item_total = db.Column(db.Float, nullable=False)
 
     order = db.relationship("Order", back_populates="items")

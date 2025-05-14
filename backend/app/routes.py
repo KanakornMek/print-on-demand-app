@@ -1,9 +1,12 @@
 from datetime import datetime, timezone
+from decimal import ROUND_HALF_UP, Decimal
 from flask import Blueprint, abort, current_app, jsonify, request
-from .models import Item, User, db
+from .models import Item, Order, OrderItem, User, Product, ProductVariant, ProductCategory, CartItem, Address, ShippingOption, db
 from .auth import clerk_auth_required
 from svix import Webhook, WebhookVerificationError
 import os
+from sqlalchemy import and_
+from sqlalchemy.orm import selectinload, joinedload
 
 
 main_bp = Blueprint('main', __name__)
@@ -156,7 +159,767 @@ def get_profile(clerk_user_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@main_bp.route('/api/products', methods=['GET'])
+def get_products():
+    try:
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 20, type=int)
+        category_id = request.args.get('category_id', type=int)
+        color_filter = request.args.get('color', type=str)
+        size_filter = request.args.get('size', type=str)
+
+        query = Product.query.options(selectinload(Product.variants))
+
+        if category_id:
+            query = query.filter(Product.category_id == category_id)
+
+        if color_filter and size_filter:
+            query = query.join(Product.variants).filter(
+                and_(ProductVariant.color == color_filter, ProductVariant.size == size_filter)
+            )
+        elif color_filter:
+            query = query.join(Product.variants).filter(ProductVariant.color == color_filter)
+        elif size_filter:
+            query = query.join(Product.variants).filter(ProductVariant.size == size_filter)
+
+        if color_filter or size_filter:
+            query = query.distinct()
+
+        paginated_products = query.paginate(page=page, per_page=limit, error_out=False)
+        products_on_page = paginated_products.items
+
+        data = []
+        for product in products_on_page:
+            variant_colors = []
+            if product.variants:
+                all_colors = [v.color for v in product.variants if v.color]
+                if all_colors:
+                    variant_colors = sorted(list(set(all_colors)))
+
+            variant_sizes = []
+            if product.variants:
+                all_sizes = [v.size for v in product.variants if v.size]
+                if all_sizes:
+                    variant_sizes = sorted(list(set(all_sizes)))
+            
+            product_dict = {
+                "id": product.id,
+                "name": product.name,
+                "description": product.description,
+                "base_price": product.base_price,
+                "colors": variant_colors,
+                "sizes": variant_sizes,
+                "image_url": product.image_url
+            }
+            data.append(product_dict)
+
+        pagination_details = {
+            "total_items": paginated_products.total,
+            "total_pages": paginated_products.pages,
+            "current_page": paginated_products.page,
+            "next_page": paginated_products.next_page_num if paginated_products.has_next else None,
+            "prev_page": paginated_products.prev_page_num if paginated_products.has_prev else None
+        }
+        
+        return jsonify({
+            "data": data,
+            "pagination": pagination_details
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error in /api/products endpoint: {str(e)}")
+        return jsonify({"error": "An unexpected error occurred while retrieving products.", "details": str(e)}), 500
+
+@main_bp.route('/api/products/<int:product_id>', methods=['GET'])
+def get_product_detail(product_id):
+    try:
+        product = db.session.query(Product).options(
+            selectinload(Product.variants)
+        ).get(product_id)
+
+        if not product:
+            return jsonify({"error": "Product not found"}), 404
+
+        variants_data = []
+        for variant in product.variants:
+            variants_data.append({
+                "variant_id": variant.id,
+                "color": variant.color,
+                "size": variant.size,
+                "price_modifier": variant.price_modifier,
+                "stock_status": variant.stock_status,
+                "image_url": variant.image_url
+            })
+
+        response_data = {
+            "id": product.id,
+            "name": product.name,
+            "description": product.description,
+            "base_price": product.base_price,
+            "image_url": product.image_url,
+            "variants": variants_data
+        }
+
+        return jsonify(response_data), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error in /api/products/{product_id} endpoint: {str(e)}")
+        return jsonify({"details": str(e)}), 500
+
+@main_bp.route('/api/categories', methods=['GET'])
+def get_categories():
+    try:
+        categories = ProductCategory.query.all()
+        categories_data = [category.to_dict() for category in categories]
+        
+        return jsonify({"data": categories_data}), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error in /api/categories endpoint: {str(e)}")
+        return jsonify({"details": str(e)}), 500
+
+@main_bp.route('/api/cart', methods=['GET'])
+@clerk_auth_required
+def get_cart(clerk_user_id):
+    try:
+        user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        cart_items = user.cart_items
+        cart_data = []
+        total_price = 0.0
+
+        for item in cart_items:
+            item_price = (item.variant.price_modifier + item.variant.product.base_price) * item.quantity
+            total_price += item_price
+            cart_data.append({
+                **item.to_dict(),
+                "product_name": item.variant.product.name,
+                "product_description": item.variant.product.description,
+                "product_image_url": item.variant.product.image_url,
+                "base_price": item.variant.product.base_price,
+                "price": item.variant.price_modifier + item.variant.product.base_price,
+                "variant_color": item.variant.color,
+                "variant_size": item.variant.size,
+                "variant_price_modifier": item.variant.price_modifier,
+                "variant_stock_status": item.variant.stock_status,
+                "variant_image_url": item.variant.image_url,
+                "item_total_price": item_price
+            })
+
+        return jsonify({"cart": cart_data, "total_price": total_price}), 200
+    except Exception as e:
+        return jsonify({"details": str(e)}), 500
+
+@main_bp.route('/api/cart/items', methods=['POST'])
+@clerk_auth_required
+def add_to_cart(clerk_user_id):
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    variant_id = data.get('variant_id')
+    quantity = data.get('quantity')
+    customization_details = data.get('customization_details') 
+
+    if not variant_id:
+        return jsonify({"error": "Missing or invalid 'variant_id'. It must be an integer."}), 400
+    
+    if not quantity or quantity <= 0:
+        return jsonify({"error": "Missing or invalid 'quantity'. It must be a positive integer."}), 400
+
+    try:
+        user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+        if not user:
+            return jsonify({"error": "Authenticated user not found in database"}), 404
+
+        variant = ProductVariant.query.get(variant_id)
+        if not variant:
+            return jsonify({"error": "Product variant not found"}), 404
+
+        if variant.stock_status == "out_of_stock":
+            return jsonify({
+                "error": "Item is out of stock",
+                "variant_id": variant_id
+            }), 400
+        
+        existing_item = CartItem.query.filter_by(
+            user_id=user.id,
+            variant_id=variant_id,
+            customization_details=customization_details 
+        ).first()
+
+        current_quantity_already_in_cart = existing_item.quantity if existing_item else 0
+        all_total_quantity = current_quantity_already_in_cart + quantity
+        
+        if variant.stock_quantity is not None:
+            if all_total_quantity > variant.stock_quantity:
+                available_to_add = variant.stock_quantity - current_quantity_already_in_cart
+                if available_to_add <= 0:
+                     return jsonify({
+                        "error": f"Stock limit reached.",
+                        "variant_id": variant_id,
+                        "current_in_cart": current_quantity_already_in_cart,
+                        "stock_available": variant.stock_quantity,
+                        "can_add": max(0, available_to_add)
+                    }), 400
+                else:
+                    return jsonify({
+                        "error": f"Insufficient stock for the requested quantity.",
+                        "variant_id": variant_id,
+                        "can_add": available_to_add,
+                        "current_in_cart": current_quantity_already_in_cart,
+                        "stock_available": variant.stock_quantity
+                    }), 400
+        
+        status_code = 200 
+        if existing_item:
+            existing_item.quantity += quantity
+            message = "Cart updated successfully"
+        else:
+            new_cart_item = CartItem(
+                user_id=user.id,
+                variant_id=variant_id,
+                quantity=quantity,
+                customization_details=customization_details
+            )
+            db.session.add(new_cart_item)
+            status_code = 201
+            message = "Item added to cart"
+        
+        db.session.commit()
+        updated_cart_items_query = CartItem.query.filter_by(user_id=user.id)\
+            .options(selectinload(CartItem.variant).selectinload(ProductVariant.product))
+        
+        updated_cart_items = updated_cart_items_query.all()
+
+        cart_data = []
+        for item in updated_cart_items:
+            item_dict = item.to_dict()
+            cart_data.append(item_dict)
+        
+        return jsonify({
+            "message": message,
+            "cart": cart_data 
+        }), status_code
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "An unexpected error occurred while updating the cart.", "details": str(e)}), 500
+
+@main_bp.route('/api/cart/items/<int:cart_item_id>', methods=['PUT'])
+@clerk_auth_required
+def update_cart_item(clerk_user_id, cart_item_id):
+    
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    new_quantity = data.get('quantity')
+
+    if new_quantity is None or not isinstance(new_quantity, int) or new_quantity <= 0:
+        return jsonify({"error": "Invalid 'quantity'. Must be a positive integer."}), 400
+
+    try:
+        user = User.query.options(
+            selectinload(User.cart_items).selectinload(CartItem.variant)
+        ).filter_by(clerk_user_id=clerk_user_id).first()
+        
+        if not user:
+            return jsonify({"error": "Authenticated user not found in database"}), 404
+
+        cart_item_to_update = None
+        for item_in_user_cart in user.cart_items:
+            if item_in_user_cart.id == cart_item_id:
+                cart_item_to_update = item_in_user_cart
+                break
+        
+        if not cart_item_to_update:
+            return jsonify({"error": "Cart item not found"}), 404
+
+        variant = cart_item_to_update.variant
+        if not variant:
+            return jsonify({"error": "Product variant details missing for this cart item."}), 500
+            
+        if variant.stock_status == "out_of_stock":
+            return jsonify({
+                "error": "Item is out of stock. Cannot update quantity.",
+                "variant_id": variant.id
+            }), 400
+        
+        if variant.stock_quantity is not None:
+            quantity_of_this_variant_in_other_cart_lines = 0
+            for item_in_cart in user.cart_items:
+                if item_in_cart.variant_id == variant.id and item_in_cart.id != cart_item_to_update.id:
+                    quantity_of_this_variant_in_other_cart_lines += item_in_cart.quantity
+            
+            all_total_quantity_for_variant_in_cart = quantity_of_this_variant_in_other_cart_lines + new_quantity
+            
+            if all_total_quantity_for_variant_in_cart > variant.stock_quantity:
+                available_for_this_specific_line_item = variant.stock_quantity - quantity_of_this_variant_in_other_cart_lines
+                return jsonify({
+                    "error": f"Insufficient stock to set quantity to {new_quantity}. ",
+                    "variant_id": variant.id,
+                    "max_allowable_for_this_item": max(0, available_for_this_specific_line_item),
+                    "stock_available_for_variant": variant.stock_quantity,
+                    "quantity_in_other_lines": quantity_of_this_variant_in_other_cart_lines
+                }), 400
+        
+        cart_item_to_update.quantity = new_quantity
+        
+        db.session.commit()
+
+        final_cart_items_query = CartItem.query.filter_by(user_id=user.id)\
+            .options(
+                selectinload(CartItem.variant).selectinload(ProductVariant.product)
+            )
+        
+        final_cart_items = final_cart_items_query.all()
+        
+        cart_data = []
+        for item in final_cart_items:
+            item_dict = item.to_dict() 
+            cart_data.append(item_dict)
+
+        return jsonify({
+            "message": "Cart item updated",
+            "cart": cart_data 
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "An unexpected error occurred while updating the cart item.", "details": str(e)}), 500
  
+@main_bp.route('/api/cart/items/<int:cart_item_id>', methods=['DELETE'])
+@clerk_auth_required
+def remove_cart_item(clerk_user_id, cart_item_id):
+    try:
+        user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+        if not user:
+            return jsonify({"error": "Authenticated user not found in database"}), 404
+
+        cart_item_to_delete = CartItem.query.filter_by(id=cart_item_id, user_id=user.id).first()
+
+        if not cart_item_to_delete:
+            return jsonify({"error": "Cart item not found"}), 404
+
+        db.session.delete(cart_item_to_delete)
+        db.session.commit()
+
+        updated_cart_items = CartItem.query.filter_by(user_id=user.id)\
+            .options(selectinload(CartItem.variant).selectinload(ProductVariant.product))\
+            .all()
+        
+        cart_data = [item.to_dict() for item in updated_cart_items]
+
+        return jsonify({
+            "message": "Item removed from cart",
+            "cart": cart_data
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "An unexpected error occurred while removing the item.", "details": str(e)}), 500
+
+@main_bp.route('/api/cart', methods=['DELETE'])
+@clerk_auth_required
+def clear_cart(clerk_user_id):
+
+    try:
+        user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+        if not user:
+            return jsonify({"error": "Authenticated user not found in database"}), 404
+
+        CartItem.query.filter_by(user_id=user.id).delete(synchronize_session='fetch')
+        
+        db.session.commit()
+
+        empty_cart_response = {
+            "items": [],
+            "total": 0.00 
+        }
+
+        return jsonify({
+            "message": "Cart cleared",
+            "cart": empty_cart_response
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "An unexpected error occurred while clearing the cart.", "details": str(e)}), 500
+
+@main_bp.route('/api/addresses', methods=['POST'])
+@clerk_auth_required
+def add_address(clerk_user_id):
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["street", "city", "state", "zip_code", "country", "phone_number"]
+    missing_fields = []
+    for field in required_fields:
+        if field not in data or not data[field]:
+            missing_fields.append(field)
+    
+    if missing_fields:
+        return jsonify({"error": f"Missing or empty required fields: {', '.join(missing_fields)}"}), 400
+
+    street = data["street"]
+    city = data["city"]
+    state = data["state"]
+    zip_code = data["zip_code"]
+    country = data["country"]
+    phone_number = data["phone_number"]
+    is_default_requested = data.get("is_default", False)
+
+    try:
+        user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+        if not user:
+            return jsonify({"error": "Authenticated user not found in database"}), 404
+
+        if is_default_requested:
+            current_default_address = Address.query.filter_by(user_id=user.id, is_default=True).first()
+            if current_default_address:
+                current_default_address.is_default = False
+                db.session.add(current_default_address)
+
+        new_address = Address(
+            user_id=user.id,
+            street=street,
+            city=city,
+            state=state,
+            zip_code=zip_code,
+            country=country,
+            phone_number=phone_number,
+            is_default=is_default_requested
+        )
+
+        db.session.add(new_address)
+        db.session.commit()
+
+        return jsonify({
+            "message": "Address added successfully",
+            "address": new_address.to_dict()
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "An unexpected error occurred while adding the address.", "details": str(e)}), 500
+
+@main_bp.route('/api/addresses', methods=['GET'])
+@clerk_auth_required
+def get_addresses(clerk_user_id):
+    try:
+        user = User.query.options(selectinload(User.addresses))\
+                         .filter_by(clerk_user_id=clerk_user_id).first()
+        
+        if not user:
+            return jsonify({"error": "Authenticated user not found in database"}), 404
+        address_list_data = [address.to_dict() for address in user.addresses]
+
+        return jsonify({
+            "data": address_list_data
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred while retrieving addresses.", "details": str(e)}), 500
+@main_bp.route('/api/addresses/<int:address_id>', methods=['PUT'])
+@clerk_auth_required
+def update_address(clerk_user_id, address_id):
+
+    data = request.get_json()
+
+    if data is None:
+        return jsonify({"error": "Invalid json data provided"}), 400
+    if not data: 
+        return jsonify({"error": "No fields provided for update"}), 400
+
+    try:
+        user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+        if not user:
+            return jsonify({"error": "Authenticated user not found in database"}), 404
+
+        address_to_update = Address.query.filter_by(id=address_id, user_id=user.id).first()
+        if not address_to_update:
+            return jsonify({"error": "Address not found or does not belong to user"}), 404
+
+        if "is_default" in data:
+            requested_is_default = data.get("is_default")
+            
+            if not isinstance(requested_is_default, bool):
+                return jsonify({"error": "'is_default' must be a boolean value (true or false)"}), 400
+
+            if requested_is_default is True:
+                if not address_to_update.is_default:
+                    other_default_address = Address.query.filter(
+                        Address.user_id == user.id,
+                        Address.is_default == True
+                    ).first()
+                    
+                    if other_default_address:
+                        other_default_address.is_default = False
+                        db.session.add(other_default_address)
+                    address_to_update.is_default = True
+            else:
+                if address_to_update.is_default:
+                    address_to_update.is_default = False
+        
+        non_nullable_fields_in_model = ["street", "city", "zip_code", "country"] 
+        
+        updatable_fields = ["street", "city", "state", "zip_code", "country", "phone_number"]
+        for field in updatable_fields:
+            if field in data:
+                value = data[field]
+                
+                if value is None and field in non_nullable_fields_in_model:
+                     return jsonify({"error": f"Field '{field}' cannot be set to null as it is required."}), 400
+                
+                setattr(address_to_update, field, value)
+        
+        db.session.add(address_to_update)
+        db.session.commit()
+
+        return jsonify({
+            "message": "Address updated successfully",
+            "address": address_to_update.to_dict()
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "An unexpected error occurred while updating the address.", "details": str(e)}), 500
+
+@main_bp.route('/api/addresses/<int:address_id>', methods=['DELETE'])
+@clerk_auth_required
+def delete_address(clerk_user_id, address_id):
+    try:
+        user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+        if not user:
+            return jsonify({"error": "Authenticated user not found in database"}), 404
+
+        address_to_delete = Address.query.filter_by(id=address_id, user_id=user.id).first()
+
+        if not address_to_delete:
+            return jsonify({"error": "Address not found or does not belong to user"}), 404
+
+        db.session.delete(address_to_delete)
+        db.session.commit()
+
+        return jsonify({"message": "Address deleted successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "An unexpected error occurred while deleting the address.", "details": str(e)}), 500
+
+@main_bp.route('/api/shipping/options', methods=['GET'])
+@clerk_auth_required
+def get_shipping_options(clerk_user_id):
+    try:
+        user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+        if not user:
+            return jsonify({"error": "Authenticated user not found in database"}), 404
+
+        shipping_options = ShippingOption.query.all()
+        shipping_options_data = [shipping_option.to_dict() for shipping_option in shipping_options]
+        
+        return jsonify({"shipping_options": shipping_options_data}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@main_bp.route('/api/orders', methods=['POST'])
+@clerk_auth_required
+def create_order(clerk_user_id):
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    shipping_address_id = data.get("shipping_address_id")
+    shipping_option_id_str = data.get("shipping_option_id")
+    payment_method = data.get("payment_method")
+
+    if not all([shipping_address_id, shipping_option_id_str, payment_method]):
+        return jsonify({"error": "Missing required fields: shipping_address_id, shipping_option_id, payment_method"}), 400
+    
+    billing_address_id = data.get("billing_address_id", shipping_address_id) 
+    try:
+        user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+        if not user: return jsonify({"error": "User not found"}), 404
+
+        shipping_address = Address.query.filter_by(id=shipping_address_id, user_id=user.id).first()
+        if not shipping_address: return jsonify({"error": "Shipping address not found or invalid"}), 400
+        
+        billing_addr = Address.query.filter_by(id=billing_address_id, user_id=user.id).first()
+        if not billing_addr: return jsonify({"error": "Billing address not found or invalid"}), 400
+
+        cart_items = CartItem.query.filter_by(user_id=user.id)\
+            .options(db.selectinload(CartItem.variant).selectinload(ProductVariant.product))\
+            .all()
+        if not cart_items:
+            return jsonify({"error": "Cart is empty"}), 400
+        
+        selected_shipping_info = ShippingOption.query.filter_by(id=shipping_option_id_str).first()
+        if not selected_shipping_info:
+            return jsonify({"error": "Invalid shipping option ID"}), 400
+        
+        shipping_cost = selected_shipping_info.get("base_cost", 0.00)
+        shipping_option_name = selected_shipping_info.get("name", "Standard Shipping")
+
+        subtotal = Decimal("0.00")
+        order_item_instances = []
+        for item in cart_items:
+            if not (item.variant and item.variant.product and item.variant.price is not None):
+                return jsonify({"error": f"Cart item (ID: {item.id}) has invalid product data."}), 400
+            
+            unit_price = Decimal(str(item.variant.price))
+            item_total = unit_price * Decimal(item.quantity)
+            subtotal += item_total
+            
+            order_item_instances.append(OrderItem(
+                variant_id=item.variant_id,
+                product_name_snapshot=item.variant.product.name,
+                variant_details_snapshot=f"Size: {item.variant.size}, Color: {item.variant.color}",
+                quantity=item.quantity,
+                unit_price_snapshot=float(unit_price), 
+                item_total=float(item_total) 
+            ))
+
+        tax_amount = (subtotal * 0.07).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        total_amount = subtotal + tax_amount + shipping_cost
+
+        new_order = Order(
+            user_id=user.id,
+            shipping_address_id=shipping_address.id,
+            billing_address_id=billing_addr.id,
+            shipping_option_name=shipping_option_name,
+            shipping_cost=float(shipping_cost),
+            status='pending_payment',
+            total_amount=float(total_amount),
+            subtotal=float(subtotal), 
+            tax_amount=float(tax_amount), 
+            payment_method=payment_method,
+            items=order_item_instances, 
+        )
+        db.session.add(new_order)
+
+        CartItem.query.filter_by(user_id=user.id).delete(synchronize_session=False)
+        
+        db.session.commit()
+
+        order_response_data = new_order.to_dict()
+
+
+        return jsonify({"message": "Order placed successfully", "order": order_response_data}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to create order.", "details": str(e)}), 500
+
+
+DEFAULT_ORDER_LIMIT = 10
+MAX_ORDER_LIMIT = 50
+@main_bp.route('/api/orders', methods=['GET'])
+@clerk_auth_required
+def get_orders(clerk_user_id):
+
+    try:
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', DEFAULT_ORDER_LIMIT, type=int)
+        status_filter = request.args.get('status', None, type=str)
+
+        if page < 1:
+            page = 1
+        if limit < 1:
+            limit = DEFAULT_ORDER_LIMIT
+        elif limit > MAX_ORDER_LIMIT:
+            limit = MAX_ORDER_LIMIT
+
+        user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+        if not user:
+            return jsonify({"error": "Authenticated user not found"}), 404 
+
+        order_query = Order.query.filter_by(user_id=user.id)
+
+        if status_filter:
+            order_query = order_query.filter(Order.status == status_filter)
+
+        order_query = order_query.order_by(Order.created_at.desc())
+        paginated_orders = order_query.paginate(page=page, per_page=limit, error_out=False)
+        
+        orders_list_response = []
+        for order in paginated_orders.items:
+            order_dict = order.to_dict() 
+            order_dict["id"] = f"ORD{order.id:05d}"
+
+            orders_list_response.append(order_dict)
+
+        pagination_meta = {
+            "current_page": paginated_orders.page,
+            "limit": paginated_orders.per_page,
+            "total_items": paginated_orders.total,
+            "total_pages": paginated_orders.pages,
+            "has_next": paginated_orders.has_next,
+            "next_page": paginated_orders.next_num if paginated_orders.has_next else None,
+            "has_prev": paginated_orders.has_prev,
+            "prev_page": paginated_orders.prev_num if paginated_orders.has_prev else None,
+        }
+
+        return jsonify({
+            "data": orders_list_response,
+            "pagination": pagination_meta
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred while retrieving orders.", "details": str(e)}), 500
+
+
+@main_bp.route('/api/orders/<int:order_id>', methods=['GET'])
+@clerk_auth_required
+def get_order_details(clerk_user_id, order_id):
+    """
+    Retrieves details of a specific order for the authenticated user.
+    """
+    try:
+        user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+        if not user:
+            return jsonify({"error": "Authenticated user not found"}), 404
+
+        order = Order.query.options(
+            selectinload(Order.items).selectinload(OrderItem.variant),
+            joinedload(Order.shipping_address),
+            joinedload(Order.billing_address)
+        ).filter_by(id=order_id, user_id=user.id).first()
+
+        if not order:
+            return jsonify({"error": "Order not found or access denied"}), 404
+
+        order_data = order.to_dict()
+
+        order_data["id"] = f"ORD{order.id:05d}"
+
+
+        order_data["items"] = [item.to_dict() for item in order.items]
+
+        if order.shipping_address:
+            order_data["shipping_address"] = order.shipping_address.to_dict()
+        else:
+            order_data["shipping_address"] = None 
+
+        if order.billing_address:
+            order_data["billing_address"] = order.billing_address.to_dict()
+        else:
+            order_data["billing_address"] = None
+            
+        return jsonify(order_data), 200
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+
+
 @main_bp.route('/api/items', methods=['GET'])
 def get_items():
     try:
