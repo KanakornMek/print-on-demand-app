@@ -1,6 +1,5 @@
 import React from 'react';
 import '@/global.css';
-import { Search, ShoppingBag, User } from 'lucide-react';
 import { Redirect, Link } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { View, ActivityIndicator } from 'react-native';

@@ -67,7 +67,7 @@ export default function HomeScreen() {
           elevation: 2, 
         }}
       >
-        <Text style={{ fontFamily: 'Rochester_400Regular'}} className='text-amber-900 text-xl font-semibold'> SnapPress </Text>
+        <Text style={{ fontFamily: 'Rochester_400Regular'}} className='text-amber-900 text-2xl font-semibold'> SnapPress </Text>
       </View>
 
       {/* <SearchBar placeholder='Search design or name...'></SearchBar> */}
