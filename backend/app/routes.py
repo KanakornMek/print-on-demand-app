@@ -1,9 +1,11 @@
 from datetime import datetime, timezone
 from flask import Blueprint, abort, current_app, jsonify, request
-from .models import Item, User, db
+from .models import Item, User, Product, ProductVariant, ProductCategory, db
 from .auth import clerk_auth_required
 from svix import Webhook, WebhookVerificationError
 import os
+from sqlalchemy import and_
+from sqlalchemy.orm import selectinload
 
 
 main_bp = Blueprint('main', __name__)
@@ -155,6 +157,81 @@ def get_profile(clerk_user_id):
             return jsonify({"error": "User not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# main_bp = Blueprint('main', __name__) # This is already defined in your provided code
+
+# Existing routes like index and get_profile ...
+
+@main_bp.route('/api/products', methods=['GET'])
+def get_products():
+    try:
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 20, type=int)
+        category_id = request.args.get('category_id', type=int)
+        color_filter = request.args.get('color', type=str)
+        size_filter = request.args.get('size', type=str)
+
+        query = Product.query.options(selectinload(Product.variants))
+
+        if category_id:
+            query = query.filter(Product.category_id == category_id)
+
+        if color_filter and size_filter:
+            query = query.join(Product.variants).filter(
+                and_(ProductVariant.color == color_filter, ProductVariant.size == size_filter)
+            )
+        elif color_filter:
+            query = query.join(Product.variants).filter(ProductVariant.color == color_filter)
+        elif size_filter:
+            query = query.join(Product.variants).filter(ProductVariant.size == size_filter)
+
+        if color_filter or size_filter:
+            query = query.distinct()
+
+        paginated_products = query.paginate(page=page, per_page=limit, error_out=False)
+        products_on_page = paginated_products.items
+
+        data = []
+        for product in products_on_page:
+            variant_colors = []
+            if product.variants:
+                all_colors = [v.color for v in product.variants if v.color]
+                if all_colors:
+                    variant_colors = sorted(list(set(all_colors)))
+
+            variant_sizes = []
+            if product.variants:
+                all_sizes = [v.size for v in product.variants if v.size]
+                if all_sizes:
+                    variant_sizes = sorted(list(set(all_sizes)))
+            
+            product_dict = {
+                "id": product.id,
+                "name": product.name,
+                "description": product.description,
+                "base_price": product.base_price,
+                "colors": variant_colors,
+                "sizes": variant_sizes,
+                "image_url": product.image_url
+            }
+            data.append(product_dict)
+
+        pagination_details = {
+            "total_items": paginated_products.total,
+            "total_pages": paginated_products.pages,
+            "current_page": paginated_products.page,
+            "next_page": paginated_products.next_page_num if paginated_products.has_next else None,
+            "prev_page": paginated_products.prev_page_num if paginated_products.has_prev else None
+        }
+        
+        return jsonify({
+            "data": data,
+            "pagination": pagination_details
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error in /api/products endpoint: {str(e)}")
+        return jsonify({"error": "An unexpected error occurred while retrieving products.", "details": str(e)}), 500
 
  
 @main_bp.route('/api/items', methods=['GET'])
