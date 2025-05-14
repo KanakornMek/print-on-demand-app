@@ -57,7 +57,8 @@ function RootNavigation() {
       <SignedIn> 
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="product/[id]" options={{ title: 'Product Details' }} />
+          <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="store/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="checkout" options={{ headerShown: false }} />
         </Stack>
       </SignedIn>
