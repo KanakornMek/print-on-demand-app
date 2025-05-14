@@ -69,8 +69,7 @@ export default function HomeScreen() {
       >
         <Text style={{ fontFamily: 'Rochester_400Regular'}} className='text-amber-900 text-2xl font-semibold'> SnapPress </Text>
       </View>
-
-      {/* <SearchBar placeholder='Search design or name...'></SearchBar> */}
+      
       <View className="items-start gap-2 w-[95vw] mt-3 mb-2">
             <View className="relative w-full">
                 <Feather
