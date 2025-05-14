@@ -142,6 +142,7 @@ addresses_data = [
     }
 ]
 
+
 # --- CartItem Mock Data (user_id are placeholders) ---
 cart_items_data = [
     {
@@ -193,7 +194,7 @@ orders_data = [
         "id": 1, "user_id": 1, "shipping_address_id": 1, "billing_address_id": 1,
         "shipping_option_name": "Standard Shipping", "shipping_cost": 5.00,
         "status": "completed", "total_amount": 254.50, "subtotal": 249.50, "tax_amount": 0.00,
-        "payment_method_token": "tok_visa_1234", "tracking_number": "1Z999AA10123456789",
+        "payment_method": "credit card", "tracking_number": "1Z999AA10123456789",
         "created_at": datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc),
         "updated_at": datetime(2024, 1, 17, 11, 0, 0, tzinfo=timezone.utc)
     },
@@ -201,7 +202,7 @@ orders_data = [
         "id": 2, "user_id": 2, "shipping_address_id": 3, "billing_address_id": 3,
         "shipping_option_name": "Express Shipping", "shipping_cost": 15.00,
         "status": "shipped", "total_amount": 114.94, "subtotal": 99.94, "tax_amount": 0.00,
-        "payment_method_token": "tok_mastercard_5678", "tracking_number": "TN789XYZ123",
+        "payment_method": "cash", "tracking_number": "TN789XYZ123",
         "created_at": datetime(2024, 2, 1, 14, 0, 0, tzinfo=timezone.utc),
         "updated_at": datetime(2024, 2, 2, 9, 15, 0, tzinfo=timezone.utc)
     },
@@ -209,7 +210,7 @@ orders_data = [
         "id": 3, "user_id": 1, "shipping_address_id": 2, "billing_address_id": 1, # Different shipping address
         "shipping_option_name": "Free Shipping (Orders over $100)", "shipping_cost": 0.00,
         "status": "pending_payment", "total_amount": 120.75, "subtotal": 120.75, "tax_amount": 0.00,
-        "payment_method_token": None, "tracking_number": None,
+        "payment_method": "credit card", "tracking_number": None,
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc)
     },
@@ -217,7 +218,7 @@ orders_data = [
         "id": 4, "user_id": 2, "shipping_address_id": 4, "billing_address_id": 4,
         "shipping_option_name": "International Standard", "shipping_cost": 25.00,
         "status": "processing", "total_amount": 324.00, "subtotal": 299.00, "tax_amount": 0.00,
-        "payment_method_token": "tok_amex_9012", "tracking_number": None,
+        "payment_method": "cash", "tracking_number": None,
         "created_at": datetime(2024, 2, 20, 18, 0, 0, tzinfo=timezone.utc),
         "updated_at": datetime(2024, 2, 21, 10, 0, 0, tzinfo=timezone.utc)
     }
