@@ -1,8 +1,9 @@
 import { canGoBack } from "expo-router/build/global-state/routing";
-import { TouchableOpacity, View, Text } from "react-native";
+import { TouchableOpacity, View, Text, FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from '@expo/vector-icons/Feather';
 import { useRouter } from "expo-router";
+import ProductCard from '@/components/common/ProductCard';
 
 
 export default function StoreDetailScreen() {
@@ -15,6 +16,32 @@ export default function StoreDetailScreen() {
         following: 15,
         bio: 'BioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBio'
     }
+    let data0 = [
+        {
+          image : 'img',
+          name: 'Name',
+          creator: 'Creator',
+          price: 100
+        },
+        {
+          image : 'img2',
+          name: 'Name2',
+          creator: 'Creator2',
+          price: 50
+        },
+        {
+          image : 'img3',
+          name: 'name3',
+          creator: 'creator3',
+          price: 150
+        },
+        {
+          image : 'img4',
+          name: 'name4',
+          creator: 'creator4',
+          price: 250
+        },
+    ]
 
     return (
         <SafeAreaView className="flex-1 bg-amber-400" edges={['top']}>
@@ -48,6 +75,19 @@ export default function StoreDetailScreen() {
                         </View>
                     </View>
                     <Text className="font-normal text-amber-900 text-base my-2">{data.bio}</Text>
+                </View>
+                <View className='flex-1 px-[16px] w-full items-center pt-[16px]'>
+                    <FlatList
+                        className='w-full flex-1'
+                        columnWrapperClassName='justify-between items-center w-full'
+                        numColumns={2}
+                        data = {data0}
+                        renderItem = { ({item}) => (
+                            <ProductCard image={item.image} name={item.name} creator={item.creator} price={item.price}></ProductCard>
+                            
+                        )
+                        } 
+                    />
                 </View>
             </View>
         </SafeAreaView>

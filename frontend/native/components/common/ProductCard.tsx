@@ -9,7 +9,7 @@ interface Props {
 
 export default function ProductCard({image, name, creator, price} : Props) {
     return (
-        <Pressable className={'rounded-3xl w-[45vw] h-[16rem] border-solid overflow-hidden mb-[2.5vw] shadow-sm'}>
+        <Pressable className={'rounded-3xl w-[48%] h-[16rem] border-solid overflow-hidden mb-[16px] shadow-sm'}>
             <View className='bg-slate-200 justify-center items-center h-[80%]'>
                 <Text> {image} </Text>
             </View>

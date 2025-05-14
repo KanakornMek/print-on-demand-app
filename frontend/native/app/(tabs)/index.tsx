@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView } from 'react-native';
 import { Link, router, useRouter } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
 import { FlatList } from 'react-native';
@@ -42,35 +42,26 @@ export default function HomeScreen() {
       creator: 'creator4',
       price: 250
     },
+    {
+      image : 'img3',
+      name: 'name3',
+      creator: 'creator3',
+      price: 150
+    },
+    {
+      image : 'img4',
+      name: 'name4',
+      creator: 'creator4',
+      price: 250
+    },
   ];
 
   return (
     <SafeAreaView className="flex-1 bg-amber-400" edges={['top']}>
-      <View className="flex-1 items-center justify-center bg-amber-50 ">
-      {/* <Text className="text-2xl font-bold mb-4">Welcome to the Home Screen!</Text>
-      {user && <Text className="text-lg mb-2">Hello, {user.firstName || user.primaryEmailAddress?.emailAddress}!</Text>}
-      <Link href="/product/123" asChild>
-        <Button title="Go to Product 123" />
-      </Link>
-      <View className="my-2" />
-      <Link href="/(auth)/login" asChild>
-        <Button title="Go to Login (if not logged in)" />
-      </Link> */}
-
-      <View 
-        className="bg-amber-400 px-4 py-3 flex-row items-center w-full"
-        style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 2,
-          elevation: 2, 
-        }}
-      >
-        <Text style={{ fontFamily: 'Rochester_400Regular'}} className='text-amber-900 text-2xl font-semibold'> SnapPress </Text>
-      </View>
-      
-      <View className="items-start gap-2 w-[95vw] mt-3 mb-2">
+      <View className="flex-1 items-center bg-amber-50">
+        <View className="w-full px-[16px] py-[16px]">
+          <View className="items-center w-full p-[16px] gap-4 bg-amber-300 rounded-xl">
+            <Text style={{ fontFamily: 'Rochester_400Regular'}} className='text-amber-900 text-4xl font-semibold'> SnapPress </Text>
             <View className="relative w-full">
                 <Feather
                     className="absolute left-4 top-6 z-10 -translate-y-1/2"
@@ -91,19 +82,23 @@ export default function HomeScreen() {
                     color="#fbbf24"
                 />
             </View>
+          </View>
+        </View>
+        <View className='flex-1 px-[16px] w-full items-center'>
+          <FlatList
+              className='w-full flex-1'
+              columnWrapperClassName='justify-between items-center w-full'
+              numColumns={2}
+              data = {data0}
+              renderItem = { ({item}) => (
+                  <ProductCard image={item.image} name={item.name} creator={item.creator} price={item.price}></ProductCard>
+                  
+                )
+              } 
+          />
+        </View>
+          
       </View>
-
-      <FlatList
-        className='w-screen'
-        columnWrapperClassName='justify-around'
-        numColumns={2}
-        data = {data0}
-        renderItem = { ({item}) => (
-            <ProductCard image={item.image} name={item.name} creator={item.creator} price={item.price}></ProductCard>
-          )
-        } 
-       />
-    </View>
     </SafeAreaView>
     
   );
