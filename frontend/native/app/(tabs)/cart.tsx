@@ -123,7 +123,7 @@ export default function Cart() {
                 </View>
               </View>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/checkout')}>
               <View className="bg-amber-500 rounded-lg p-4 shadow-sm mb-6">
                 <Text className="text-center text-white font-semibold text-lg">Checkout</Text>
               </View>
