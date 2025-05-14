@@ -58,6 +58,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <Feather name="user" color={color} size={size} />,
         }}
       />
+      
     </Tabs>
   );
 }
