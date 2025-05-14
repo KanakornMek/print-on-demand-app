@@ -78,7 +78,7 @@ export default function Cart() {
                   <View className="flex-1">
                     <View className="flex-row justify-between">
                       <Text className="font-medium text-amber-900">{item.title}</Text>
-                      <Text className="font-medium text-amber-900">${(item.price & item.quantity).toFixed(2)}</Text>
+                      <Text className="font-medium text-amber-900">${(item.price).toFixed(2)}</Text>
                     </View>
                     <Text className="text-xs text-amber-700 mb-2">{item.color + ' / ' + item.size}</Text>
                     <View className="flex-row items-center justify-between">
@@ -87,14 +87,14 @@ export default function Cart() {
                           className="h-7 w-7 items-center justify-center p-0"
                           onPress={() => {}}
                         >
-                          <Text className="text-amber-900 text-lg">-</Text>
+                          <Feather name='minus' size={16} color='#78350f'/>
                         </TouchableOpacity>
                         <Text className="w-8 text-center text-sm text-amber-900">{item.quantity}</Text>
                         <TouchableOpacity
                           className="h-7 w-7 items-center justify-center p-0"
                           onPress={() => {}}
                         >
-                          <Text className="text-amber-900 text-lg">+</Text>
+                          <Feather name='plus' size={16} color='#78350f'/>
                         </TouchableOpacity>
                       </View>
                       <TouchableOpacity>
