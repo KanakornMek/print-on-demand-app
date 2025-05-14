@@ -6,6 +6,7 @@ import * as SecureStore from 'expo-secure-store';
 // import { CartProvider } from '@/contexts/CartContext'; 
 // import { ThemeProvider } from '@/contexts/ThemeContext'; 
 import { ActivityIndicator, View } from 'react-native';
+import { StarHalfIcon } from 'lucide-react';
 
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
@@ -58,6 +59,7 @@ function RootNavigation() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="store/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="checkout" options={{ headerShown: false }} />
         </Stack>
       </SignedIn>
       <SignedOut> 
