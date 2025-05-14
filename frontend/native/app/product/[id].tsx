@@ -104,12 +104,11 @@ const SizeSelector: React.FC<SizeSelectorProps> = ({
 
 
 export default function ProductDetailScreen() {
-  // const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   // const [product, setProduct] = React.useState<Product | null>(null);
   // const [loading, setLoading] = React.useState(true);
   // const [error, setError] = React.useState<string | null>(null);
   const router = useRouter();
- 
   
   let data = {
     image: 'IMG',
@@ -174,8 +173,9 @@ Whether you're an avid hiker, a lover of the outdoors, or simply appreciate clea
             elevation: 2, 
           }}
         >
-          <TouchableOpacity onPress={() => canGoBack() ? router.back() : router.push('/(tabs)')} className="mr-2 p-1">
+          <TouchableOpacity onPress={() => canGoBack() ? router.back() : router.push('/(tabs)')} className="mr-2 p-1 items-center flex-row">
             <Feather name="arrow-left" size={24} color="#78350f" />
+            <Text>{id}</Text>
           </TouchableOpacity>
           {/* <View className='bg-white size-10 rounded-full'></View>
           <Text className="font-semibold text-amber-900 text-lg"> Product Detail: ID {id} </Text> */}
