@@ -11,11 +11,20 @@ load_dotenv()
 db = SQLAlchemy()
 migrate = Migrate()
 
+
+
 def create_app():
     app = Flask(__name__)
 
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    UPLOAD_FOLDER = 'uploads'
+
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+
+    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
     CORS(app)
 

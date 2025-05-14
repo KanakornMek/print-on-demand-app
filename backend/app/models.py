@@ -16,6 +16,7 @@ class User(db.Model):
     addresses = db.relationship("Address", back_populates="user")
     orders = db.relationship("Order", back_populates="user")
     cart_items = db.relationship("CartItem", back_populates="user")
+    designs = db.relationship("Design", back_populates="user")
 
     def __repr__(self):
         return f"<User id={self.id} username='{self.username}' email='{self.email}'>"
@@ -90,6 +91,7 @@ class ProductVariant(db.Model):
     product = db.relationship("Product", back_populates="variants")
     cart_items = db.relationship("CartItem", back_populates="variant")
     order_items = db.relationship("OrderItem", back_populates="variant")
+    designs = db.relationship("Design", back_populates="variant")
 
     def __repr__(self):
         return f"<ProductVariant id={self.id} product_id={self.product_id} color='{self.color}' size='{self.size}'>"
@@ -255,6 +257,37 @@ class ShippingOption(db.Model):
             "base_cost": self.base_cost,
             "estimated_delivery_template": self.estimated_delivery_template,
         }
+
+class Design(db.Model):
+    __tablename__ = 'designs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    variant_id = db.Column(db.Integer, db.ForeignKey('product_variants.id'), nullable=False)
+
+    final_product_image_url = db.Column(db.String(255), nullable=False)
+
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    user = db.relationship("User", back_populates="designs")
+    variant = db.relationship("ProductVariant", back_populates="designs")
+
+    def __repr__(self):
+        return f"<Design id={self.id} name='{self.name}' variant_id={self.variant_id} user_id={self.user_id}>"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "user_id": self.user_id,
+            "variant_id": self.variant_id,
+            "final_product_image_url": self.final_product_image_url,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
 
 class Item(db.Model):
     __tablename__ = 'items'
