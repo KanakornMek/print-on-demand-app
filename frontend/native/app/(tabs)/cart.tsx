@@ -53,7 +53,7 @@ export default function Cart() {
     };
 
     fetchCartItems();
-  })
+  }, [])
   
   // const cartItems = [
   //   {
