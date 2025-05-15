@@ -178,7 +178,8 @@ def get_users(clerk_user_id):
         users_list_response = []
         for user in paginated_users.items:
             user_dict = user.to_dict()
-            user_dict["profile_image_url"] = sdk.users.get(user.clerk_user_id).profile_image_url
+            clerk_user_data = sdk.users.get(user.clerk_user_id)
+            user_dict["profile_image_url"] = clerk_user_data.profile_image_url
             users_list_response.append(user_dict)
 
         return jsonify({
