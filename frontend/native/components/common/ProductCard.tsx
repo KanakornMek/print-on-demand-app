@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { Pressable, TouchableOpacity, View , Text} from 'react-native';
 
 interface Props {
@@ -11,8 +12,18 @@ interface Props {
 export default function ProductCard({image, name, creator, price, onPress} : Props) {
     return (
         <Pressable className={'rounded-3xl w-[48%] h-[16rem] border-solid overflow-hidden mb-[16px] shadow-sm'} onPress={onPress}>
-            <View className='bg-slate-200 justify-center items-center h-[80%]'>
-                <Text> {image} </Text>
+            <View className='bg-slate-200 justify-center items-center h-[80%] w-full'>
+                <Image 
+                    source={"https://placehold.co/100"}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: 6,
+                    }}
+                    alt={name}
+                    contentFit="cover"
+                />
             </View>
             <View className='bg-white h-[20%] flex-row justify-between'>
                 <View className='float-left justify-center pl-[1.2rem]'>

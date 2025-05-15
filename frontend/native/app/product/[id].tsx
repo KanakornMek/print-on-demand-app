@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
 import { Link, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { canGoBack } from "expo-router/build/global-state/routing";
 import Feather from '@expo/vector-icons/Feather';
 // import { Product } from '@/types/pod'; // Assuming you have a Product type
 import Markdown from 'react-native-markdown-display';
+import { useAuth } from '@clerk/clerk-expo';
 // import ReadMore from 'react-native-read-more-text';
 
 interface ColorSelectorProps {
@@ -102,13 +103,73 @@ const SizeSelector: React.FC<SizeSelectorProps> = ({
   );
 };
 
+interface Design {
+  id: number;
+  name: string;
+  final_product_image_url: string;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+  product_details: {
+    id: number;
+    name: string;
+    description: string;
+    image_url: string;
+    base_price: number;
+    category_id: number;
+  };
+  variant_id: number;
+  variant_details: {
+    id: number;
+    product_id: number;
+    color: string;
+    size: string;
+    image_url: string;
+    price_modifier: number;
+    stock_quantity: number;
+    stock_status: string;
+  };
+  creator_name: string;
+}
+
 
 export default function ProductDetailScreen() {
-  // const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   // const [product, setProduct] = React.useState<Product | null>(null);
   // const [loading, setLoading] = React.useState(true);
   // const [error, setError] = React.useState<string | null>(null);
   const router = useRouter();
+  const { getToken } = useAuth();
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+
+  const [design, setDesign] = useState<Design>();
+  
+    useFocusEffect(useCallback(() => {
+      const fetchDesigns = async () => {
+        try {
+          const token = await getToken();
+          const response = await fetch(`${apiUrl}/api/designs/${id}`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              }
+            }
+          );
+          const res = await response.json();
+          console.log('Fetched design:', res);
+          setDesign(res);
+        } catch (error) {
+          console.error('Error fetching designs:', error);
+        }
+      }
+      fetchDesigns();
+      return () => {
+        console.log('Cleanup function called');
+      }
+    }, []));
+
  
   
   let data = {
@@ -188,7 +249,7 @@ Whether you're an avid hiker, a lover of the outdoors, or simply appreciate clea
             <Text className='text-black'> {data.image} </Text>
           </View>
           <View className='bg-amber-50 px-5'>
-            <Text className="font-semibold text-amber-900 text-xl pt-4 pb-3"> {data.name} </Text>
+            <Text className="font-semibold text-amber-900 text-xl pt-4 pb-3"> {design?.name} </Text>
             {/* <View className='gap-2 py-2 bg-red-500 inline-block relative w-fit'>
               
               <View className='absolute top-0 z-0'>
@@ -216,7 +277,7 @@ Whether you're an avid hiker, a lover of the outdoors, or simply appreciate clea
                   >
                     <Feather name='minus' size={16} color='#78350f'/>
                   </TouchableOpacity>
-                  <Text className="w-8 text-center text-base text-amber-900 mx-2">{5}</Text>
+                  <Text className="w-8 text-center text-base text-amber-900 mx-2">5</Text>
                   <TouchableOpacity
                     className="size-9 items-center justify-center p-0"
                     onPress={() => {}}
@@ -227,7 +288,7 @@ Whether you're an avid hiker, a lover of the outdoors, or simply appreciate clea
               </View>
             </View>
             <View className='px-1.5'>
-              <Markdown style={{body:{color:'#78350f', marginTop:16}}}>{data?.description}</Markdown>
+              <Markdown style={{body:{color:'#78350f', marginTop:16}}}>{design?.product_details.description}</Markdown>
             </View>
             <View className="my-2 bg-amber-200 h-[1px]"/>
             <View className='gap-2 py-2'>

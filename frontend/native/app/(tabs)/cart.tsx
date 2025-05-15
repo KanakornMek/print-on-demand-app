@@ -55,6 +55,7 @@ export default function Cart() {
 
         
       };
+
       fetchCartItems();
       return () => {
           console.log('Cleanup function called');

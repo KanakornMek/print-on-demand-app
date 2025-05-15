@@ -1,20 +1,81 @@
-import React from 'react';
+import React, {useState, useCallback} from 'react';
 import { View, Text, TouchableOpacity, TextInput, ScrollView } from 'react-native';
-import { Link, router, useRouter } from 'expo-router';
-import { useUser } from '@clerk/clerk-expo';
+import { Link, router, useFocusEffect, useRouter } from 'expo-router';
+import { useAuth, useUser } from '@clerk/clerk-expo';
 import { FlatList } from 'react-native';
 import ProductCard from '@/components/common/ProductCard';
 import Feather from '@expo/vector-icons/Feather';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFonts, Rochester_400Regular } from '@expo-google-fonts/rochester';
 
+interface Designs {
+  id: number;
+  name: string;
+  final_product_image_url: string;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+  product_details: {
+    id: number;
+    name: string;
+    description: string;
+    image_url: string;
+    base_price: number;
+    category_id: number;
+  };
+  variant_id: number;
+  variant_details: {
+    id: number;
+    product_id: number;
+    color: string;
+    size: string;
+    image_url: string;
+    price_modifier: number;
+    stock_quantity: number;
+    stock_status: string;
+  };
+  creator_name: string;
+}
+
 export default function HomeScreen() {
   const { user } = useUser();
   const router = useRouter();
+  const { getToken } = useAuth();
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+
 
   let [fontsLoaded] = useFonts({
     Rochester_400Regular,
   });
+
+  const [designs, setDesigns] = useState<Designs[]>([]);
+
+  useFocusEffect(useCallback(() => {
+    const fetchDesigns = async () => {
+      try {
+        const token = await getToken();
+        const response = await fetch(`${apiUrl}/api/designs`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            }
+          }
+        );
+        const res = await response.json();
+        console.log('Fetched designs:', res);
+        setDesigns(res.data);
+      } catch (error) {
+        console.error('Error fetching designs:', error);
+      }
+    }
+    fetchDesigns();
+    return () => {
+      console.log('Cleanup function called');
+    }
+  }, []));
+
 
   // dummy data
   let data0 = [
@@ -89,9 +150,9 @@ export default function HomeScreen() {
               className='w-full flex-1'
               columnWrapperClassName='justify-between items-center w-full'
               numColumns={2}
-              data = {data0}
+              data = {designs}
               renderItem = { ({item}) => (
-                  <ProductCard image={item.image} name={item.name} creator={item.creator} price={item.price} onPress={()=>{router.push('/product/123')}}></ProductCard>
+                  <ProductCard image={item.final_product_image_url} name={item.name} creator={item.creator_name} price={item.product_details.base_price} onPress={()=>{router.push(`/product/${item.id}`)}}></ProductCard>
                   
                 )
               } 
