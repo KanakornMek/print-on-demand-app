@@ -52,7 +52,6 @@ class ProductCategory(db.Model):
 
 class Product(db.Model):
     __tablename__ = 'products'
-
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False)
@@ -62,18 +61,15 @@ class Product(db.Model):
 
     category = db.relationship("ProductCategory", back_populates="products")
     variants = db.relationship("ProductVariant", back_populates="product")
+    designs = db.relationship("Design", back_populates="product")
 
     def __repr__(self):
         return f"<Product id={self.id} name='{self.name}' base_price={self.base_price}>"
-
     def to_dict(self):
         return {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description,
-            "base_price": self.base_price,
-            "image_url": self.image_url,
-            "category_id": self.category_id,
+            "id": self.id, "name": self.name, "description": self.description,
+            "base_price": self.base_price, "image_url": self.image_url,
+            "category_id": self.category_id
         }
 
 class ProductVariant(db.Model):
@@ -91,7 +87,7 @@ class ProductVariant(db.Model):
     product = db.relationship("Product", back_populates="variants")
     cart_items = db.relationship("CartItem", back_populates="variant")
     order_items = db.relationship("OrderItem", back_populates="variant")
-    designs = db.relationship("Design", back_populates="variant")
+    # designs = db.relationship("Design", back_populates="variant")
 
     def __repr__(self):
         return f"<ProductVariant id={self.id} product_id={self.product_id} color='{self.color}' size='{self.size}'>"
@@ -110,23 +106,26 @@ class ProductVariant(db.Model):
 
 class CartItem(db.Model):
     __tablename__ = 'cart_items'
-
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     variant_id = db.Column(db.Integer, db.ForeignKey('product_variants.id'), nullable=False)
+    design_id = db.Column(db.Integer, db.ForeignKey('designs.id'), nullable=False)
+    
     quantity = db.Column(db.Integer, nullable=False)
-    customization_details = db.Column(db.Text)
+    customization_details = db.Column(db.Text) 
 
     user = db.relationship("User", back_populates="cart_items")
-    variant = db.relationship("ProductVariant", back_populates="cart_items")
+    design = db.relationship("Design", back_populates="cart_items")
+    variant = db.relationship("ProductVariant", back_populates="cart_items") 
 
     def __repr__(self):
-        return f"<CartItem id={self.id} user_id={self.user_id} variant_id={self.variant_id} quantity={self.quantity}>"
+        return f"<CartItem id={self.id} user_id={self.user_id} design_id={self.design_id} quantity={self.quantity}>"
 
     def to_dict(self):
         return {
             "id": self.id,
             "user_id": self.user_id,
+            "design_id": self.design_id,
             "variant_id": self.variant_id,
             "quantity": self.quantity,
             "customization_details": self.customization_details,
@@ -215,6 +214,7 @@ class OrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
     variant_id = db.Column(db.Integer, db.ForeignKey('product_variants.id'))
+    design_id = db.Column(db.Integer, db.ForeignKey('designs.id'))
     product_name_snapshot = db.Column(db.String(255), nullable=False) 
     variant_details_snapshot = db.Column(db.Text) 
     quantity = db.Column(db.Integer, nullable=False)
@@ -223,6 +223,7 @@ class OrderItem(db.Model):
 
     order = db.relationship("Order", back_populates="items")
     variant = db.relationship("ProductVariant", back_populates="order_items")
+    design = db.relationship("Design", back_populates="order_items")
 
     def __repr__(self):
         return f"<OrderItem id={self.id} order_id={self.order_id} quantity={self.quantity} unit_price_snapshot={self.unit_price_snapshot} item_total={self.item_total}>"
@@ -232,6 +233,7 @@ class OrderItem(db.Model):
             "id": self.id,
             "order_id": self.order_id,
             "variant_id": self.variant_id,
+            "design_id": self.design_id,
             "product_name_snapshot": self.product_name_snapshot,
             "variant_details_snapshot": self.variant_details_snapshot,
             "quantity": self.quantity,
@@ -260,34 +262,30 @@ class ShippingOption(db.Model):
 
 class Design(db.Model):
     __tablename__ = 'designs'
-
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    variant_id = db.Column(db.Integer, db.ForeignKey('product_variants.id'), nullable=False)
-
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     final_product_image_url = db.Column(db.String(255), nullable=False)
-
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc) if isinstance(db.DateTime, type) else db.DateTime, nullable=False)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc) if isinstance(db.DateTime, type) else db.DateTime, onupdate=lambda: datetime.now(timezone.utc) if isinstance(db.DateTime, type) else db.DateTime, nullable=False)
 
     user = db.relationship("User", back_populates="designs")
-    variant = db.relationship("ProductVariant", back_populates="designs")
+    product = db.relationship("Product", back_populates="designs")
+    
+    cart_items = db.relationship("CartItem", back_populates="design")
+    order_items = db.relationship("OrderItem", back_populates="design")
 
     def __repr__(self):
-        return f"<Design id={self.id} name='{self.name}' variant_id={self.variant_id} user_id={self.user_id}>"
-
+        return f"<Design id={self.id} name='{self.name}' product_id={self.product_id} user_id={self.user_id}>"
     def to_dict(self):
         return {
-            "id": self.id,
-            "name": self.name,
-            "user_id": self.user_id,
-            "variant_id": self.variant_id,
+            "id": self.id, "name": self.name, "user_id": self.user_id,
+            "product_id": self.product_id,
             "final_product_image_url": self.final_product_image_url,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at and hasattr(self.created_at, 'isoformat') else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at and hasattr(self.updated_at, 'isoformat') else None,
         }
-
 
 class Item(db.Model):
     __tablename__ = 'items'

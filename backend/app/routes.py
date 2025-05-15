@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
-from flask import Blueprint, abort, current_app, jsonify, request, send_file
+from flask import Blueprint, abort, current_app, json, jsonify, request, send_file
 from .models import Item, Order, OrderItem, User, Product, ProductVariant, ProductCategory, Design, CartItem, Address, ShippingOption, db
 from .auth import clerk_auth_required
 from svix import Webhook, WebhookVerificationError
@@ -286,31 +286,58 @@ def get_cart(clerk_user_id):
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        cart_items = user.cart_items
+        cart_items_query = CartItem.query.filter_by(user_id=user.id).options(
+            selectinload(CartItem.design).selectinload(Design.product),
+            selectinload(CartItem.variant)
+        )
+        cart_items = cart_items_query.all()
+        
         cart_data = []
-        total_price = 0.0
+        total_price = Decimal("0.00")
 
         for item in cart_items:
-            item_price = (item.variant.price_modifier + item.variant.product.base_price) * item.quantity
-            total_price += item_price
+            if not item.design or not item.design.product or not item.variant:
+                current_app.logger.error(f"CartItem {item.id} has missing design, product, or variant link.")
+                cart_data.append({
+                    "id": item.id,
+                    "error": "Incomplete item data (missing design, product, or variant link).",
+                    "quantity": item.quantity,
+                    "design_id": item.design_id,
+                    "variant_id": item.variant_id
+                })
+                continue
+
+            base_price = Decimal(str(item.design.product.base_price))
+            price_modifier = Decimal(str(item.variant.price_modifier))
+            effective_price = base_price + price_modifier
+            item_total = effective_price * Decimal(item.quantity)
+            total_price += item_total
+            
             cart_data.append({
-                **item.to_dict(),
-                "product_name": item.variant.product.name,
-                "product_description": item.variant.product.description,
-                "product_image_url": item.variant.product.image_url,
-                "base_price": item.variant.product.base_price,
-                "price": item.variant.price_modifier + item.variant.product.base_price,
+                "id": item.id,
+                "user_id": item.user_id,
+                "design_id": item.design.id,
+                "design_name": item.design.name,
+                "design_final_image_url": item.design.final_product_image_url,
+                "variant_id": item.variant.id,
                 "variant_color": item.variant.color,
                 "variant_size": item.variant.size,
-                "variant_price_modifier": item.variant.price_modifier,
+                "variant_image_url": item.variant.image_url, # Specific variant image
                 "variant_stock_status": item.variant.stock_status,
-                "variant_image_url": item.variant.image_url,
-                "item_total_price": item_price
+                "quantity": item.quantity,
+                "customization_details": json.loads(item.customization_details) if item.customization_details else None,
+                "product_id": item.design.product.id,
+                "product_name": item.design.product.name,
+                "product_image_url": item.design.product.image_url,
+                "base_price": float(base_price),
+                "variant_price_modifier": float(price_modifier),
+                "unit_price": float(effective_price),
+                "item_total_price": float(item_total),
             })
 
-        return jsonify({"cart": cart_data, "total_price": total_price}), 200
+        return jsonify({"cart": cart_data, "total_price": float(total_price)}), 200
     except Exception as e:
-        return jsonify({"details": str(e)}), 500
+        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
 @main_bp.route('/api/cart/items', methods=['POST'])
 @clerk_auth_required
@@ -321,13 +348,15 @@ def add_to_cart(clerk_user_id):
         return jsonify({"error": "No data provided"}), 400
 
     variant_id = data.get('variant_id')
+    design_id = data.get('design_id')
     quantity = data.get('quantity')
     customization_details = data.get('customization_details') 
 
-    if not variant_id:
+    if not isinstance(variant_id, int):
         return jsonify({"error": "Missing or invalid 'variant_id'. It must be an integer."}), 400
-    
-    if not quantity or quantity <= 0:
+    if not isinstance(design_id, int):
+        return jsonify({"error": "Missing or invalid 'design_id'. It must be an integer."}), 400
+    if not isinstance(quantity, int) or quantity <= 0:
         return jsonify({"error": "Missing or invalid 'quantity'. It must be a positive integer."}), 400
 
     try:
@@ -338,6 +367,12 @@ def add_to_cart(clerk_user_id):
         variant = ProductVariant.query.get(variant_id)
         if not variant:
             return jsonify({"error": "Product variant not found"}), 404
+        
+        design = Design.query.filter_by(id=design_id, user_id=user.id).first()
+        if not design:
+            return jsonify({"error": "Design not found or not accessible by user"}), 404
+        if design.product_id != variant.product_id:
+            return jsonify({"error": "Design does not match the product of the selected variant."}), 400
 
         if variant.stock_status == "out_of_stock":
             return jsonify({
@@ -348,6 +383,7 @@ def add_to_cart(clerk_user_id):
         existing_item = CartItem.query.filter_by(
             user_id=user.id,
             variant_id=variant_id,
+            design_id=design_id,
             customization_details=customization_details 
         ).first()
 
@@ -382,6 +418,7 @@ def add_to_cart(clerk_user_id):
             new_cart_item = CartItem(
                 user_id=user.id,
                 variant_id=variant_id,
+                design_id=design_id,
                 quantity=quantity,
                 customization_details=customization_details
             )
@@ -390,8 +427,10 @@ def add_to_cart(clerk_user_id):
             message = "Item added to cart"
         
         db.session.commit()
-        updated_cart_items_query = CartItem.query.filter_by(user_id=user.id)\
-            .options(selectinload(CartItem.variant).selectinload(ProductVariant.product))
+        updated_cart_items_query = CartItem.query.filter_by(user_id=user.id).options(
+            selectinload(CartItem.design).selectinload(Design.product),
+            selectinload(CartItem.variant)
+        )
         
         updated_cart_items = updated_cart_items_query.all()
 
@@ -739,10 +778,10 @@ def create_order(clerk_user_id):
         return jsonify({"error": "No data provided"}), 400
 
     shipping_address_id = data.get("shipping_address_id")
-    shipping_option_id_str = data.get("shipping_option_id")
+    shipping_option_id_input = data.get("shipping_option_id")
     payment_method = data.get("payment_method")
 
-    if not all([shipping_address_id, shipping_option_id_str, payment_method]):
+    if not all([shipping_address_id, shipping_option_id_input, payment_method]):
         return jsonify({"error": "Missing required fields: shipping_address_id, shipping_option_id, payment_method"}), 400
     
     billing_address_id = data.get("billing_address_id", shipping_address_id) 
@@ -757,12 +796,14 @@ def create_order(clerk_user_id):
         if not billing_addr: return jsonify({"error": "Billing address not found or invalid"}), 400
 
         cart_items = CartItem.query.filter_by(user_id=user.id)\
-            .options(db.selectinload(CartItem.variant).selectinload(ProductVariant.product))\
-            .all()
+            .options(
+                selectinload(CartItem.variant).selectinload(ProductVariant.product),
+                selectinload(CartItem.design) 
+            ).all()
         if not cart_items:
             return jsonify({"error": "Cart is empty"}), 400
         
-        selected_shipping_info = ShippingOption.query.filter_by(id=shipping_option_id_str).first()
+        selected_shipping_info = ShippingOption.query.filter_by(id=shipping_option_id_input).first()
         if not selected_shipping_info:
             return jsonify({"error": "Invalid shipping option ID"}), 400
         
@@ -772,17 +813,28 @@ def create_order(clerk_user_id):
         subtotal = Decimal("0.00")
         order_item_instances = []
         for item in cart_items:
-            if not (item.variant and item.variant.product and item.variant.price is not None):
-                return jsonify({"error": f"Cart item (ID: {item.id}) has invalid product data."}), 400
+            if not (item.variant and item.variant.product and \
+                    hasattr(item.variant.product, 'base_price') and \
+                    hasattr(item.variant, 'price_modifier')):
+                current_app.logger.error(f"CartItem {item.id} for user {user.id} has incomplete variant or product data.")
+                return jsonify({"error": f"Cart item (ID: {item.id}) has invalid or incomplete product/variant data."}), 400
             
-            unit_price = Decimal(str(item.variant.price))
+            base_price = Decimal(str(item.variant.product.base_price))
+            price_modifier = Decimal(str(item.variant.price_modifier))
+            unit_price = base_price + price_modifier
+
             item_total = unit_price * Decimal(item.quantity)
             subtotal += item_total
-            
+
+            if item.design_id is None:
+                 current_app.logger.error(f"CartItem {item.id} is missing design_id.")
+                 return jsonify({"error": f"Cart item (ID: {item.id}) is missing design information."}), 400
+
             order_item_instances.append(OrderItem(
                 variant_id=item.variant_id,
+                design_id=item.design_id, # Added this line
                 product_name_snapshot=item.variant.product.name,
-                variant_details_snapshot=f"Size: {item.variant.size}, Color: {item.variant.color}",
+                variant_details_snapshot=f"Color: {item.variant.color}, Size: {item.variant.size}", 
                 quantity=item.quantity,
                 unit_price_snapshot=float(unit_price), 
                 item_total=float(item_total) 
@@ -811,7 +863,9 @@ def create_order(clerk_user_id):
         db.session.commit()
 
         order_response_data = new_order.to_dict()
-
+        order_response_data['items'] = [oi.to_dict() for oi in new_order.items]
+        order_response_data['shipping_address'] = new_order.shipping_address.to_dict() if new_order.shipping_address else None
+        order_response_data['billing_address'] = new_order.billing_address.to_dict() if new_order.billing_address else None
 
         return jsonify({"message": "Order placed successfully", "order": order_response_data}), 201
 
