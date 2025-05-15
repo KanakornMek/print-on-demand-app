@@ -985,6 +985,7 @@ def get_user_designs(clerk_user_id):
             design_dict['variant_details'] = design.variant.to_dict() if design.variant else None
             if design.variant and design.variant.product:
                 design_dict['product_details'] = design.variant.product.to_dict()
+            design_dict['creater_name'] = design.user.username
             designs_data.append(design_dict)
 
         pagination_details = {
