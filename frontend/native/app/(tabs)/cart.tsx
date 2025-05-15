@@ -4,8 +4,9 @@ import { Image } from "expo-image";
 import { Button, ScrollView, Text, Touchable, TouchableOpacity, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context";
 import { canGoBack } from "expo-router/build/global-state/routing";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@clerk/clerk-expo";
+import { useFocusEffect } from "expo-router";
 
 interface CartItem {
   id: number;
@@ -33,27 +34,34 @@ export default function Cart() {
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-  useEffect(() => {
-    const fetchCartItems = async () => {
-      try {
-        const token = await getToken();
-        const response = await fetch(`${apiUrl}/api/cart`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        const data = await response.json();
-        console.log('Fetched cart items:', data);
-        setCartItems(data.cart)
-      } catch (error) {
-        console.error('Error fetching cart items:', error);
-      }
-    };
+  useFocusEffect(
+    useCallback(() => {
+      const fetchCartItems = async () => {
+        try {
+          const token = await getToken();
+          const response = await fetch(`${apiUrl}/api/cart`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          const data = await response.json();
+          console.log('Fetched cart items:', data);
+          setCartItems(data.cart)
+        } catch (error) {
+          console.error('Error fetching cart items:', error);
+        }
 
-    fetchCartItems();
-  })
+        
+      };
+
+      fetchCartItems();
+      return () => {
+          console.log('Cleanup function called');
+      }
+    }, [])
+  )
   
   // const cartItems = [
   //   {

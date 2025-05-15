@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,14 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
 import { Link, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { canGoBack } from 'expo-router/build/global-state/routing';
 import Feather from '@expo/vector-icons/Feather';
 // import { Product } from '@/types/pod'; // Assuming you have a Product type
 import Markdown from 'react-native-markdown-display';
+import { useAuth } from '@clerk/clerk-expo';
 // import ReadMore from 'react-native-read-more-text';
 
 interface ColorSelectorProps {
@@ -152,7 +153,7 @@ const SizeSelector: React.FC<SizeSelectorProps> = ({ sizes = [], selectedSize, o
 };
 
 export default function ProductDetailScreen() {
-  // const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   // const [product, setProduct] = React.useState<Product | null>(null);
   // const [loading, setLoading] = React.useState(true);
   // const [error, setError] = React.useState<string | null>(null);
