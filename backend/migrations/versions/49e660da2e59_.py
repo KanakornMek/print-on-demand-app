@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 52e376cd09e0
+Revision ID: 49e660da2e59
 Revises: 
-Create Date: 2025-05-14 18:09:10.148998
+Create Date: 2025-05-15 16:51:16.071045
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '52e376cd09e0'
+revision = '49e660da2e59'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -73,6 +73,18 @@ def upgrade():
     sa.ForeignKeyConstraint(['category_id'], ['product_categories.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('designs',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.String(length=255), nullable=True),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('product_id', sa.Integer(), nullable=False),
+    sa.Column('final_product_image_url', sa.String(length=255), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['product_id'], ['products.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('orders',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -109,8 +121,10 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('variant_id', sa.Integer(), nullable=False),
+    sa.Column('design_id', sa.Integer(), nullable=False),
     sa.Column('quantity', sa.Integer(), nullable=False),
     sa.Column('customization_details', sa.Text(), nullable=True),
+    sa.ForeignKeyConstraint(['design_id'], ['designs.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.ForeignKeyConstraint(['variant_id'], ['product_variants.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -119,11 +133,13 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('order_id', sa.Integer(), nullable=False),
     sa.Column('variant_id', sa.Integer(), nullable=True),
+    sa.Column('design_id', sa.Integer(), nullable=True),
     sa.Column('product_name_snapshot', sa.String(length=255), nullable=False),
     sa.Column('variant_details_snapshot', sa.Text(), nullable=True),
     sa.Column('quantity', sa.Integer(), nullable=False),
     sa.Column('unit_price_snapshot', sa.Float(), nullable=False),
     sa.Column('item_total', sa.Float(), nullable=False),
+    sa.ForeignKeyConstraint(['design_id'], ['designs.id'], ),
     sa.ForeignKeyConstraint(['order_id'], ['orders.id'], ),
     sa.ForeignKeyConstraint(['variant_id'], ['product_variants.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -137,6 +153,7 @@ def downgrade():
     op.drop_table('cart_items')
     op.drop_table('product_variants')
     op.drop_table('orders')
+    op.drop_table('designs')
     op.drop_table('products')
     op.drop_table('addresses')
     op.drop_table('users')
