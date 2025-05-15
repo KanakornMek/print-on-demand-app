@@ -107,7 +107,7 @@ export default function MyStoreDetailScreen() {
                         numColumns={2}
                         data = {data0}
                         renderItem = { ({item}) => (
-                            <ProductCard image={item.image} name={item.name} creator={item.creator} price={item.price} onPress = { () => router.push('/design/123')}></ProductCard>
+                            <ProductCard image={item.image} name={item.name} creator={item.creator} price={item.price}></ProductCard>
                         )
                         } 
                     />
