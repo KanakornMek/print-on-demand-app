@@ -808,6 +808,7 @@ def create_order(clerk_user_id):
         if not selected_shipping_info:
             return jsonify({"error": "Invalid shipping option ID"}), 400
         
+        selected_shipping_info = selected_shipping_info.to_dict()
         shipping_cost = selected_shipping_info.get("base_cost", 0.00)
         shipping_option_name = selected_shipping_info.get("name", "Standard Shipping")
 
