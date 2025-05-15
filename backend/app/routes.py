@@ -825,7 +825,7 @@ def create_order(clerk_user_id):
             price_modifier = Decimal(str(item.variant.price_modifier))
             unit_price = base_price + price_modifier
 
-            item_total = unit_price * Decimal(item.quantity)
+            item_total = unit_price * Decimal(str(item.quantity))
             subtotal += item_total
 
             if item.design_id is None:
@@ -842,7 +842,7 @@ def create_order(clerk_user_id):
                 item_total=float(item_total) 
             ))
 
-        tax_amount = (subtotal * 0.07).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        tax_amount = (subtotal * Decimal("0.07")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         total_amount = subtotal + tax_amount + shipping_cost
 
         new_order = Order(
