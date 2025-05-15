@@ -1091,8 +1091,13 @@ def get_design_detail(clerk_user_id, design_id):
         
         if design.product:
             design_dict['product_details'] = design.product.to_dict()
+            design_dict['product_details']['variants'] = [
+                variant.to_dict() for variant in design.product.variants
+            ]
+                
         else:
             design_dict['product_details'] = None
+
         
         if design.user:
             design_dict['creator_name'] = design.user.username
