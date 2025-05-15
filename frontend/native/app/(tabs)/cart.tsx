@@ -1,45 +1,80 @@
 import { Link, useRouter } from 'expo-router';
 import Feather from '@expo/vector-icons/Feather';
-import { Image } from 'expo-image';
-import { Button, ScrollView, Text, Touchable, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { canGoBack } from 'expo-router/build/global-state/routing';
-import { useState } from 'react';
+import { Image } from "expo-image";
+import { Button, ScrollView, Text, Touchable, TouchableOpacity, View } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context";
+import { canGoBack } from "expo-router/build/global-state/routing";
+import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/clerk-expo";
 
 interface CartItem {
   id: number;
-  title: string;
+  product_name: string;
+  product_description: string;
+  product_image_url: string;
+  variant_id: number;
+  variant_color: string;
+  variant_size: string | null;
+  variant_image_url: string;
+  variant_stock_status: string;
+  variant_price_modifier: number;
+  base_price: number;
   price: number;
+  item_total_price: number;
   quantity: number;
-  color: string;
-  size: string;
-  image: string;
+  customization_details: string | null;
 }
+
 
 export default function Cart() {
   const router = useRouter();
-  const cartItemsDemo: CartItem[] = [
-    {
-      id: 1,
-      title: 'T-shirt',
-      price: 19.99,
-      quantity: 2,
-      color: 'Blue',
-      size: 'M',
-      image: 'https://placehold.co/100',
-    },
-    {
-      id: 2,
-      title: 'Cap',
-      price: 9.99,
-      quantity: 1,
-      color: 'Red',
-      size: 'L',
-      image: 'https://placehold.co/100',
-    },
-  ];
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+  const { getToken } = useAuth();
 
-  const [cartItems, setCartItems] = useState<CartItem[]>(cartItemsDemo);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
+  useEffect(() => {
+    const fetchCartItems = async () => {
+      try {
+        const token = await getToken();
+        const response = await fetch(`${apiUrl}/api/cart`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        console.log('Fetched cart items:', data);
+        setCartItems(data.cart)
+      } catch (error) {
+        console.error('Error fetching cart items:', error);
+      }
+    };
+
+    fetchCartItems();
+  })
+  
+  // const cartItems = [
+  //   {
+  //     id: 1,
+  //     title: 'T-shirt',
+  //     price: 19.99,
+  //     quantity: 2,
+  //     color: 'Blue',
+  //     size: 'M',
+  //     image: "https://placehold.co/100",
+  //   },
+  //   {
+  //     id: 2,
+  //     title: 'Cap',
+  //     price: 9.99,
+  //     quantity: 1,
+  //     color: 'Red',
+  //     size: 'L',
+  //     image: "https://placehold.co/100",
+  //   },
+  // ]
 
   const subtotal = cartItems.reduce((acc, item) => {
     return acc + item.price * item.quantity;
@@ -73,7 +108,7 @@ export default function Cart() {
                 {cartItems.map((item) => (
                   <View key={item.id} className="mt-4 flex-row rounded-lg bg-white p-3 shadow-sm">
                     <Image
-                      source={item.image || 'https://placehold.co/100'}
+                      source={item.product_image_url || 'https://placehold.co/100'}
                       style={{
                         width: 80,
                         height: 80,
@@ -81,16 +116,16 @@ export default function Cart() {
                         borderRadius: 6,
                         marginRight: 12,
                       }}
-                      alt={item.title}
+                      alt={item.product_name}
                       contentFit="cover"
                     />
                     <View className="flex-1">
                       <View className="flex-row justify-between">
-                        <Text className="font-medium text-amber-900">{item.title}</Text>
+                        <Text className="font-medium text-amber-900">{item.product_name}</Text>
                         <Text className="font-medium text-amber-900">${item.price.toFixed(2)}</Text>
                       </View>
                       <Text className="mb-2 text-xs text-amber-700">
-                        {item.color + ' / ' + item.size}
+                        {item.variant_color + ' / ' + item.variant_size}
                       </Text>
                       <View className="flex-row items-center justify-between">
                         <View className="flex-row items-center rounded-md border border-amber-300">

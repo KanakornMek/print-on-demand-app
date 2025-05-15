@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
-from flask import Blueprint, abort, current_app, jsonify, request
-from .models import Item, Order, OrderItem, User, Product, ProductVariant, ProductCategory, CartItem, Address, ShippingOption, db
+from flask import Blueprint, abort, current_app, jsonify, request, send_file
+from .models import Item, Order, OrderItem, User, Product, ProductVariant, ProductCategory, Design, CartItem, Address, ShippingOption, db
 from .auth import clerk_auth_required
 from svix import Webhook, WebhookVerificationError
 import os
@@ -918,6 +918,255 @@ def get_order_details(clerk_user_id, order_id):
 
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+
+
+@main_bp.route('/api/designs', methods=['POST'])
+@clerk_auth_required
+def create_design(clerk_user_id):
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    variant_id = data.get('variant_id')
+    final_product_image_url = data.get('final_product_image_url')
+    name = data.get('name')
+
+    if not variant_id or not isinstance(variant_id, int):
+        return jsonify({"error": "Missing or invalid 'variant_id'"}), 400
+    if not final_product_image_url or not isinstance(final_product_image_url, str):
+        return jsonify({"error": "Missing or invalid 'final_product_image_url'"}), 400
+    if name and not isinstance(name, str):
+        return jsonify({"error": "Invalid 'name', must be a string"}), 400
+
+    variant = ProductVariant.query.get(variant_id)
+    if not variant:
+        return jsonify({"error": "ProductVariant not found"}), 404
+
+    try:
+        new_design = Design(
+            user_id=user.id,
+            variant_id=variant_id,
+            final_product_image_url=final_product_image_url,
+            name=name
+        )
+        db.session.add(new_design)
+        db.session.commit()
+        return jsonify(new_design.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error creating design: {str(e)}")
+        return jsonify({"error": "Failed to create design", "details": str(e)}), 500
+
+@main_bp.route('/api/designs', methods=['GET'])
+@clerk_auth_required
+def get_user_designs(clerk_user_id):
+    user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    try:
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 10, type=int)
+
+        designs_query = Design.query\
+            .options(joinedload(Design.variant).joinedload(ProductVariant.product))\
+            .order_by(Design.created_at.desc())
+        
+        paginated_designs = designs_query.paginate(page=page, per_page=limit, error_out=False)
+        designs_on_page = paginated_designs.items
+
+        designs_data = []
+        for design in designs_on_page:
+            design_dict = design.to_dict()
+            design_dict['variant_details'] = design.variant.to_dict() if design.variant else None
+            if design.variant and design.variant.product:
+                design_dict['product_details'] = design.variant.product.to_dict()
+            designs_data.append(design_dict)
+
+        pagination_details = {
+            "total_items": paginated_designs.total,
+            "total_pages": paginated_designs.pages,
+            "current_page": paginated_designs.page,
+            "next_page": paginated_designs.next_page_num if paginated_designs.has_next else None,
+            "prev_page": paginated_designs.prev_page_num if paginated_designs.has_prev else None
+        }
+
+        return jsonify({
+            "data": designs_data,
+            "pagination": pagination_details
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"Error fetching user designs: {str(e)}")
+        return jsonify({"error": "Failed to fetch designs", "details": str(e)}), 500
+
+@main_bp.route('/api/designs/<int:design_id>', methods=['GET'])
+@clerk_auth_required
+def get_design_detail(clerk_user_id, design_id):
+    user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    try:
+        design = Design.query.options(
+            joinedload(Design.variant).joinedload(ProductVariant.product)
+        ).filter_by(id=design_id).first()
+
+        if not design:
+            return jsonify({"error": "Design not found"}), 404
+        
+        design_dict = design.to_dict()
+        design_dict['variant_details'] = design.variant.to_dict() if design.variant else None
+        if design.variant and design.variant.product:
+                design_dict['product_details'] = design.variant.product.to_dict()
+
+        return jsonify(design_dict), 200
+    except Exception as e:
+        current_app.logger.error(f"Error fetching design {design_id}: {str(e)}")
+        return jsonify({"error": "Failed to fetch design details", "details": str(e)}), 500
+
+@main_bp.route('/api/designs/<int:design_id>', methods=['PUT'])
+@clerk_auth_required
+def update_design(clerk_user_id, design_id):
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    design = Design.query.filter_by(id=design_id, user_id=user.id).first()
+    if not design:
+        return jsonify({"error": "Design not found or access denied"}), 404
+
+    updated = False
+    if 'name' in data:
+        if data['name'] is None or isinstance(data['name'], str): 
+            design.name = data['name']
+            updated = True
+        else:
+            return jsonify({"error": "Invalid 'name', must be a string or null"}), 400
+            
+    if 'final_product_image_url' in data:
+        if isinstance(data['final_product_image_url'], str) and data['final_product_image_url']:
+            design.final_product_image_url = data['final_product_image_url']
+            updated = True
+        else:
+            return jsonify({"error": "Invalid 'final_product_image_url', must be a non-empty string"}), 400
+
+    if not updated:
+        return jsonify({"message": "No changes provided to update."}), 200
+
+    try:
+        design.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+        return jsonify(design.to_dict()), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating design {design_id}: {str(e)}")
+        return jsonify({"error": "Failed to update design", "details": str(e)}), 500
+
+@main_bp.route('/api/designs/<int:design_id>', methods=['DELETE'])
+@clerk_auth_required
+def delete_design(clerk_user_id, design_id):
+    """Delete a specific design."""
+    user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    design = Design.query.filter_by(id=design_id, user_id=user.id).first()
+    if not design:
+        return jsonify({"error": "Design not found or access denied"}), 404
+
+    try:
+        db.session.delete(design)
+        db.session.commit()
+        return jsonify({"message": "Design deleted successfully"}), 200 
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting design {design_id}: {str(e)}")
+        return jsonify({"error": "Failed to delete design", "details": str(e)}), 500
+
+
+from .print_on_shirt import overlay_images, fetch_image_from_url, allowed_file, Image, DESIGN_PLACEMENT_BOX, BytesIO
+import uuid
+from firebase_admin import storage
+import firebase_admin.exceptions
+
+@main_bp.route('/api/print-on-shirt', methods=['POST'])
+def print_on_shirt():
+
+    # shirt_image_url = request.form.get('shirt_image_url')
+    # if not shirt_image_url:
+    #     return jsonify({"error": "Missing 'shirt_image_url' in form data"}), 400
+
+    shirt_image_url = "https://blob.apliiq.com/sitestorage/resized-products/4159488_4461_577_880.jpg?v=1"
+
+    if 'design_image' not in request.files:
+        return jsonify({"error": "No 'design_image' file part in the request"}), 400
+
+    design_file = request.files['design_image']
+
+    if design_file.filename == '':
+        return jsonify({"error": "No selected file for 'design_image'"}), 400
+
+    if not design_file or not allowed_file(design_file.filename):
+        return jsonify({"error": "Invalid file type for 'design_image'. Allowed: png, jpg, jpeg"}), 400
+
+    try:
+        design_image_pil = Image.open(design_file.stream)
+    except IOError:
+        return jsonify({"error": "Could not open or read 'design_image'. Is it a valid image?"}), 400
+
+
+    shirt_image_pil = fetch_image_from_url(shirt_image_url)
+    if not shirt_image_pil:
+        return jsonify({"error": f"Could not fetch or open shirt image from URL: {shirt_image_url}"}), 500
+
+
+    placement_box = DESIGN_PLACEMENT_BOX 
+
+    result_image_pil = overlay_images(shirt_image_pil, design_image_pil, placement_box)
+    if not result_image_pil:
+        return jsonify({"error": "Failed to overlay images."}), 500
+
+    img_io = BytesIO()
+    try:
+        image_format = 'PNG'
+        mime_type = f'image/{image_format.lower()}'
+        result_image_pil.save(img_io, format=image_format)
+        img_io.seek(0)
+    except Exception as e:
+        return jsonify({"error": f"Failed to save processed image to memory buffer: {str(e)}"}), 500
+
+    try:
+        if not firebase_admin._apps:
+            return jsonify({"error": "Firebase Admin SDK not initialized."}), 500
+
+        bucket = storage.bucket()
+
+        unique_filename = f"printed_shirts/{uuid.uuid4()}.{image_format.lower()}"
+
+        blob = bucket.blob(unique_filename)
+
+        blob.upload_from_file(img_io, content_type=mime_type)
+
+        blob.make_public()
+        public_url = blob.public_url
+
+        return jsonify({
+            "message": "Image processed and uploaded successfully to Firebase Storage.",
+            "imageUrl": public_url
+        }), 200
+
+    except firebase_admin.exceptions.FirebaseError as fe:
+        return jsonify({"error": f"Firebase Storage error: {str(fe)}"}), 500
+    except Exception as e:
+        return jsonify({"error": f"An error occurred during Firebase upload: {str(e)}"}), 500
 
 
 @main_bp.route('/api/items', methods=['GET'])

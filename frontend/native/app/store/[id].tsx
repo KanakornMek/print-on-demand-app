@@ -1,5 +1,5 @@
 import { canGoBack } from 'expo-router/build/global-state/routing';
-import { TouchableOpacity, View, Text } from 'react-native';
+import { TouchableOpacity, View, Text, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from '@expo/vector-icons/Feather';
 import { useRouter } from 'expo-router';
@@ -15,40 +15,70 @@ export default function StoreDetailScreen() {
     bio: 'BioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBioBio',
   };
 
+  const data0 = [
+    // dummy items to prevent FlatList crash
+    { id: '1', image: 'img1', name: 'Design 1', creator: 'john.smith', price: 100 },
+    { id: '2', image: 'img2', name: 'Design 2', creator: 'john.smith', price: 150 },
+  ];
+
   return (
     <SafeAreaView className="flex-1 bg-amber-400" edges={['top']}>
       <View className="flex-1 bg-amber-50">
-        <View className="flex-row items-center border-b border-amber-600 bg-amber-400 px-4 py-3">
+        {/* Header */}
+        <View className="bg-amber-400 px-4 py-3 flex-row items-center border-b border-amber-600">
           <TouchableOpacity
             onPress={() => (canGoBack() ? router.back() : router.push('/(tabs)'))}
-            className="mr-2 p-1">
+            className="mr-2 p-1"
+          >
             <Feather name="arrow-left" size={24} color="#78350f" />
           </TouchableOpacity>
         </View>
-        <View className="gap-2 border-b border-amber-600 bg-amber-100 px-5 py-3">
-          <View className="my-2 flex-row items-center">
-            <View className="size-[6rem] items-center justify-center overflow-hidden rounded-full bg-white">
+
+        {/* Profile Info */}
+        <View className="bg-amber-100 px-5 py-3 border-b gap-2 border-amber-600">
+          <View className="flex-row items-center my-2">
+            <View className="rounded-full size-[6rem] bg-white overflow-hidden justify-center items-center">
               <Text>{data.image}</Text>
             </View>
-            <View className="w-fit justify-between gap-2 px-5">
-              <Text className="text-lg font-medium text-amber-900"> {data.name} </Text>
+            <View className="px-5 justify-between gap-2 w-fit">
+              <Text className="font-medium text-amber-900 text-lg">{data.name}</Text>
               <View className="flex-row justify-between gap-2">
                 <View>
-                  <Text className="text-base font-medium text-amber-900"> 18 </Text>
-                  <Text className="text-base font-normal text-amber-900"> designs </Text>
+                  <Text className="font-medium text-amber-900 text-base">18</Text>
+                  <Text className="font-normal text-amber-900 text-base">designs</Text>
                 </View>
                 <View>
-                  <Text className="text-base font-medium text-amber-900"> {data.followers} </Text>
-                  <Text className="text-base font-normal text-amber-900"> followers </Text>
+                  <Text className="font-medium text-amber-900 text-base">{data.followers}</Text>
+                  <Text className="font-normal text-amber-900 text-base">followers</Text>
                 </View>
                 <View>
-                  <Text className="text-base font-medium text-amber-900"> {data.following} </Text>
-                  <Text className="text-base font-normal text-amber-900"> following </Text>
+                  <Text className="font-medium text-amber-900 text-base">{data.following}</Text>
+                  <Text className="font-normal text-amber-900 text-base">following</Text>
                 </View>
               </View>
             </View>
           </View>
-          <Text className="my-2 text-base font-normal text-amber-900">{data.bio}</Text>
+          <Text className="font-normal text-amber-900 text-base my-2">{data.bio}</Text>
+        </View>
+
+        {/* Product List */}
+        <View className="flex-1 px-[16px] w-full items-center">
+          <FlatList
+            className="w-full flex-1 pt-[16px]"
+            columnWrapperClassName="justify-between items-center w-full"
+            numColumns={2}
+            data={data0}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <ProductCard
+                image={item.image}
+                name={item.name}
+                creator={item.creator}
+                price={item.price}
+                onPress={() => router.push('/design/123')}
+              />
+            )}
+          />
         </View>
       </View>
     </SafeAreaView>
