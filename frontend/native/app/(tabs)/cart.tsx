@@ -10,8 +10,8 @@ import { useFocusEffect } from "expo-router";
 
 interface CartItem {
   id: number;
+  product_id: number;
   product_name: string;
-  product_description: string;
   product_image_url: string;
   variant_id: number;
   variant_color: string;
@@ -20,10 +20,14 @@ interface CartItem {
   variant_stock_status: string;
   variant_price_modifier: number;
   base_price: number;
-  price: number;
+  unit_price: number;
   item_total_price: number;
   quantity: number;
   customization_details: string | null;
+  design_id: number | null; 
+  design_name: string | null;
+  design_final_image_url: string | null;
+  user_id: number;
 }
 
 
@@ -85,7 +89,7 @@ export default function Cart() {
   // ]
 
   const subtotal = cartItems.reduce((acc, item) => {
-    return acc + item.price * item.quantity;
+    return acc + item.unit_price * item.quantity;
   }, 0);
   const shipping = 4.99;
   const total = subtotal + shipping;
@@ -130,7 +134,7 @@ export default function Cart() {
                     <View className="flex-1">
                       <View className="flex-row justify-between">
                         <Text className="font-medium text-amber-900">{item.product_name}</Text>
-                        <Text className="font-medium text-amber-900">${item.price.toFixed(2)}</Text>
+                        <Text className="font-medium text-amber-900">${item.unit_price.toFixed(2)}</Text>
                       </View>
                       <Text className="mb-2 text-xs text-amber-700">
                         {item.variant_color + ' / ' + item.variant_size}

@@ -1,10 +1,11 @@
-import { Link, useRouter } from 'expo-router';
+import { Link, useFocusEffect, useRouter } from 'expo-router';
 import Feather from '@expo/vector-icons/Feather';
 import { Image } from 'expo-image';
 import { ScrollView, Text, TouchableOpacity, View, TextInput, Modal, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { canGoBack, replace } from 'expo-router/build/global-state/routing';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useAuth, useUser } from '@clerk/clerk-expo';
 
 const checkoutOrderItems = [
   {
@@ -27,11 +28,53 @@ const checkoutOrderItems = [
   },
 ];
 
+interface CartItem {
+  id: number;
+  product_id: number;
+  product_name: string;
+  product_image_url: string;
+  variant_id: number;
+  variant_color: string;
+  variant_size: string | null;
+  variant_image_url: string;
+  variant_stock_status: string;
+  variant_price_modifier: number;
+  base_price: number;
+  unit_price: number;
+  item_total_price: number;
+  quantity: number;
+  customization_details: string | null;
+  design_id: number | null; 
+  design_name: string | null;
+  design_final_image_url: string | null;
+  user_id: number;
+}
+
+interface Address {
+  id: number;
+  user_id: number;
+  street: string;
+  city: string;
+  state: string | null;
+  zip_code: string | null;
+  country: string;
+  phone_number: string | null;
+  is_default: boolean;
+}
+
 export default function Checkout() {
   const router = useRouter();
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+  const { getToken } = useAuth();
+  const { user } = useUser();
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [totalPrice, setTotalPrice] = useState(0);
   const [selectedShippingOption, setSelectedShippingOption] = useState(0);
   const [selectedPaymentOption, setSelectedPaymentOption] = useState(0);
-  const [showAlert, setShowAlert] = useState(false);
+  const [showAlert, setShowAlert] = useState(false)
+  const [addresses, setAddresses] = useState<Address[]>([]);
+
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
 
   const subtotal = checkoutOrderItems.reduce((acc, item) => {
     return acc + item.price * item.quantity;
@@ -49,6 +92,52 @@ export default function Checkout() {
 
   const shippingCost = shippingOptions[selectedShippingOption].cost;
   const total = subtotal + shippingCost;
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchCartItems = async () => {
+        try {
+          const token = await getToken();
+          const response = await fetch(`${apiUrl}/api/cart`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          const data = await response.json();
+          setCartItems(data.cart);
+          setTotalPrice(data.total_price);
+          console.log('Fetched cart items:', data);
+
+        } catch (error) {
+          console.error('Error fetching cart items:', error);
+        }
+      };
+
+      const fetchAddress = async () => {
+        try {
+          const token = await getToken();
+          const response = await fetch(`${apiUrl}/api/addresses`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          const res = await response.json();
+          setAddresses(res.data);
+          setSelectedAddress(res.data.find((address: Address) => address.is_default));
+          console.log('Fetched address:', res);
+        }
+        catch (error) {
+          console.error('Error fetching address:', error);
+        }
+      }
+      fetchAddress();
+      fetchCartItems();
+    }, [])
+  )
 
   return (
     <SafeAreaView className="flex-1 bg-amber-400" edges={['top']}>
@@ -89,12 +178,11 @@ export default function Checkout() {
             <View>
               <Text className="mb-3 text-base font-semibold text-amber-900">Shipping Address</Text>
               <View className="py-1">
-                <Text className="text-sm text-amber-800">Suphasan</Text>
-                <Text className="text-sm text-amber-800">254 Phaya Thai Rd</Text>
-                <Text className="text-sm text-amber-800">Wang Mai</Text>
-                <Text className="text-sm text-amber-800">Pathum Wan</Text>
-                <Text className="text-sm text-amber-800">Bangkok, 10330</Text>
-                <Text className="text-sm text-amber-800">Thailand</Text>
+                <Text className="text-sm text-amber-800">{user?.firstName}</Text>
+                <Text className="text-sm text-amber-800">{selectedAddress?.street}</Text>
+                <Text className="text-sm text-amber-800">{selectedAddress?.city}</Text>
+                <Text className="text-sm text-amber-800">{selectedAddress?.state}, {selectedAddress?.zip_code}</Text>
+                <Text className="text-sm text-amber-800">{selectedAddress?.country}</Text>
               </View>
             </View>
             <View className="items-center justify-center py-2">
@@ -104,12 +192,12 @@ export default function Checkout() {
 
           <View className="mb-6 rounded-lg bg-white p-4 shadow-sm">
             <Text className="mb-3 text-base font-semibold text-amber-900">Order Items</Text>
-            {checkoutOrderItems.map((item) => (
+            {cartItems.map((item) => (
               <View
                 key={item.id}
                 className="mt-3 flex-row border-b border-amber-100 pb-3 last:border-b-0 last:pb-0">
                 <Image
-                  source={item.image || 'https://placehold.co/80'}
+                  source={item.design_final_image_url || 'https://placehold.co/80'}
                   style={{
                     width: 60,
                     height: 60,
@@ -117,7 +205,7 @@ export default function Checkout() {
                     borderRadius: 6,
                     marginRight: 12,
                   }}
-                  alt={item.title}
+                  alt={item.design_name||'Product Image'}
                   contentFit="cover"
                 />
                 <View className="flex-1">
@@ -126,15 +214,15 @@ export default function Checkout() {
                       className="w-3/4 font-medium text-amber-900"
                       numberOfLines={1}
                       ellipsizeMode="tail">
-                      {item.title}
+                      {item.design_name}
                     </Text>
                     <Text className="font-medium text-amber-900">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      ${(item.item_total_price).toFixed(2)}
                     </Text>
                   </View>
                   <Text className="text-xs text-amber-700">Qty: {item.quantity}</Text>
                   <Text className="mb-1 text-xs text-amber-700">
-                    {item.color + ' / ' + item.size}
+                    {item.variant_color + ' / ' + item.variant_size}
                   </Text>
                 </View>
               </View>
@@ -197,34 +285,43 @@ export default function Checkout() {
             <View className="y-2">
               <View className="mb-1 flex-row justify-between">
                 <Text className="text-sm text-amber-700">Subtotal</Text>
-                <Text className="text-sm text-amber-900">${subtotal.toFixed(2)}</Text>
+                <Text className="text-sm text-amber-900">฿{totalPrice}</Text>
               </View>
               <View className="mb-1 flex-row justify-between">
                 <Text className="text-sm text-amber-700">Shipping</Text>
-                <Text className="text-sm text-amber-900">${shippingCost.toFixed(2)}</Text>
+                <Text className="text-sm text-amber-900">฿{shippingCost.toFixed(2)}</Text>
               </View>
 
               <View className="my-2 h-[1px] bg-amber-200" />
               <View className="flex-row justify-between">
                 <Text className="text-base font-semibold text-amber-900">Total</Text>
-                <Text className="text-base font-semibold text-amber-900">${total.toFixed(2)}</Text>
+                <Text className="text-base font-semibold text-amber-900">฿{(totalPrice+shippingCost).toFixed(2)}</Text>
               </View>
             </View>
           </View>
 
-          <TouchableOpacity
-            onPress={() => {
-              console.log('Order Placed:', {
-                items: checkoutOrderItems,
-                shippingAddress:
-                  'Suphasan, 254 Phaya Thai Rd, Wang Mai, Pathum Wan, Bangkok, 10330, Thailand',
-                shippingOption: selectedShippingOption,
-                paymentOption: selectedPaymentOption,
-                subtotal,
-                shippingCost,
-                total,
+            <TouchableOpacity
+            onPress={async () => {
+              try {
+              const token = await getToken();
+              const response = await fetch(`${apiUrl}/api/orders`, {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  shipping_address_id: selectedAddress?.id,
+                  shipping_option_id: 1,
+                  payment_method: selectedPaymentOption,
+                }),
               });
+              const data = await response.json();
+              console.log('Order placed:', data);
               setShowAlert(true);
+              } catch (error) {
+              console.error('Error placing order:', error);
+              }
             }}>
             <View className="mb-6 rounded-lg bg-amber-500 p-4 shadow-sm">
               <Text className="text-center text-lg font-semibold text-white">Place Order</Text>

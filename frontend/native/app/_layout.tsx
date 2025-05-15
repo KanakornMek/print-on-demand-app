@@ -7,6 +7,11 @@ import * as SecureStore from 'expo-secure-store';
 // import { ThemeProvider } from '@/contexts/ThemeContext'; 
 import { ActivityIndicator, View } from 'react-native';
 import { StarHalfIcon } from 'lucide-react';
+import { configureReanimatedLogger } from 'react-native-reanimated';
+
+configureReanimatedLogger({
+  strict: false,
+});
 
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 

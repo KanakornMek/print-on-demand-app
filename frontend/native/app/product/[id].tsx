@@ -103,13 +103,6 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
               ${isActive ? 'border-amber-500 ring-2 ring-amber-300' : 'border-amber-200'}
             `}
             style={{ backgroundColor: color }}>
-            {/* <View
-              className={`
-                h-8 w-8 items-center justify-center rounded-full border-2
-                ${isActive ? 'border-amber-500' : 'border-amber-200'}
-              `}>
-              <View className="h-7 w-7 rounded-full" style={{ backgroundColor: color }} />
-            </View> */}
           </Pressable>
         );
       })}
@@ -152,11 +145,43 @@ const SizeSelector: React.FC<SizeSelectorProps> = ({ sizes = [], selectedSize, o
   );
 };
 
+interface ProductVariant {
+  id: number;
+  color: string;
+  size: string;
+  image_url: string;
+  price_modifier: number;
+  product_id: number;
+  stock_quantity: number;
+  stock_status: string;
+}
+
+interface ProductDetails {
+  id: number;
+  name: string;
+  description: string;
+  image_url: string;
+  base_price: number;
+  category_id: number;
+  variants: ProductVariant[];
+}
+
+interface Design {
+  id: number;
+  name: string;
+  final_product_image_url: string;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+  product_id: number;
+  product_details: ProductDetails;
+  creator_name: string;
+}
+
+
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  // const [product, setProduct] = React.useState<Product | null>(null);
-  // const [loading, setLoading] = React.useState(true);
-  // const [error, setError] = React.useState<string | null>(null);
+
   const router = useRouter();
 
   const [chosenColor, setChosenColor] = useState(data.colors[0]);
@@ -164,6 +189,58 @@ export default function ProductDetailScreen() {
   const [quantity, setQuantity] = useState(1);
   const [selectedTab, setSelectedTab] = useState(Tabs.Description);
   const [isFollowed, setIsFollowed] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+
+  
+
+  const { getToken } = useAuth();
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+
+  const [design, setDesign] = useState<Design | null>(null);
+
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchDesign = async () => {
+        try {
+          console.log('Fetching design with ID:', id);
+          const token = await getToken();
+          const response = await fetch(`${apiUrl}/api/designs/${id}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          const res = await response.json();
+          console.log('Fetched design:', res);
+          setDesign(res);
+        } catch (error) {
+          console.error('Error fetching design:', error);
+        }
+      };
+
+      fetchDesign();
+      
+      return () => {
+        console.log('Cleanup function called');
+      };
+    }, [id])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (design) {
+        const variant = design.product_details.variants.find(
+          (v) => v.color.toLowerCase() === chosenColor && v.size === chosenSize
+        );
+        setSelectedVariant(variant || null);
+      }
+    }, [chosenColor, chosenSize, design])
+  );
+
+
+
   const handleColorSelection = (newColor: string) => {
     setChosenColor(newColor);
   };
@@ -172,14 +249,9 @@ export default function ProductDetailScreen() {
   };
 
   return (
-    // <View className="flex-1 items-center justify-center p-4 bg-white">
-    //   {/* <Stack.Screen options={{ title: product.name }} /> */}
-    //   <Stack.Screen options={{ title: `Product ${id}` }} />
-    //   <Text className="text-3xl font-bold mb-4">Product Detail: ID {id}</Text>
-    // </View>
+
     <SafeAreaView className="flex-1 bg-amber-400" edges={['top']}>
       <View className="amber-50 flex-1">
-        {/* Header */}
         <View
           className="flex-row items-center bg-amber-400 px-4 py-3"
           style={{
@@ -194,13 +266,10 @@ export default function ProductDetailScreen() {
             className="mr-2 p-1">
             <Feather name="arrow-left" size={24} color="#78350f" />
           </TouchableOpacity>
-          {/* <View className='bg-white size-10 rounded-full'></View>
-          <Text className="font-semibold text-amber-900 text-lg"> Product Detail: ID {id} </Text> */}
+
         </View>
 
-        {/* Main Content */}
         <ScrollView className="flex-1">
-          {/* Product Image */}
           <View className="flex items-center justify-center">
             <Image
               source={{ uri: data.image }}
@@ -209,16 +278,15 @@ export default function ProductDetailScreen() {
             />
           </View>
 
-          {/* Product Info */}
           <View className="bg-amber-50 p-4">
             <View className="mb-2 flex-row justify-between">
-              <Text className="text-xl font-bold text-amber-900">{data.name} </Text>
-              <Text className="text-xl font-bold text-amber-900">฿{data.price}</Text>
+              <Text className="text-xl font-bold text-amber-900">{design?.name} </Text>
+              <Text className="text-xl font-bold text-amber-900">฿{design?.product_details.base_price}</Text>
             </View>
             <View className="mb-4 flex-row gap-2">
               <View className="flex-row">
                 {[...Array(5)].map((_, i) => (
-                  <Text className={`${i + 1 <= avgRating ? 'text-amber-500' : 'text-gray-300'}`}>
+                  <Text key={i} className={`${i + 1 <= avgRating ? 'text-amber-500' : 'text-gray-300'}`}>
                     ★
                   </Text>
                 ))}
@@ -229,26 +297,24 @@ export default function ProductDetailScreen() {
             </View>
 
             <View className="gap-4">
-              <View>
-                {/* Color Options */}
+                <View>
                 <Text className="mb-2 text-sm font-medium text-amber-900">Color</Text>
                 <ColorSelector
-                  colors={data.colors}
+                  colors={design?.product_details.variants.map(v => v.color.toLowerCase()) || []}
                   selectedColor={chosenColor}
                   onSelectColor={handleColorSelection}
                 />
-              </View>
+                </View>
 
               <View>
                 <Text className="mb-2 text-sm font-medium text-amber-900">Size</Text>
                 <SizeSelector
-                  sizes={data.sizes}
+                  sizes={design?.product_details.variants.map(v => v.size) || []}
                   selectedSize={chosenSize}
                   onSelectSize={handleSizeSelection}
                 />
               </View>
 
-              {/* Select quantity */}
               <View>
                 <Text className="mb-2 text-sm font-medium text-amber-900">Quantity</Text>
                 <View className="flex-row items-center self-start rounded-md border border-amber-300 bg-white">
@@ -263,7 +329,7 @@ export default function ProductDetailScreen() {
                   <TouchableOpacity
                     className="size-8 items-center justify-center"
                     onPress={() => {
-                      setQuantity(quantity + 1);
+                      setQuantity(Math.min(quantity + 1, design?.product_details.variants.find(v => v.color.toLowerCase() === chosenColor && v.size === chosenSize)?.stock_quantity || 1));
                     }}>
                     <Feather name="plus" size={16} color="#78350f" />
                   </TouchableOpacity>
@@ -287,18 +353,17 @@ export default function ProductDetailScreen() {
               )}
             </Pressable>
           </View>
-          {/* Tabs */}
           <View className="bg-amber-50 p-4">
             <View className="w-full flex-row items-center justify-center gap-1 self-center rounded-md bg-amber-200 p-1">
               <Pressable
-                className={`h-8 flex-1 rounded p-1 text-center font-medium transition-all ${selectedTab == Tabs.Description ? 'bg-amber-400 text-amber-900' : 'text-gray-500'}`}
+                className={`h-8 flex-1 rounded p-1 items-center font-medium transition-all ${selectedTab == Tabs.Description ? 'bg-amber-400 text-amber-900' : 'text-gray-500'}`}
                 onPress={() => setSelectedTab(Tabs.Description)}>
-                Description
+                <Text>Description</Text>
               </Pressable>
               <Pressable
-                className={`h-8 flex-1 rounded p-1 text-center font-medium transition-all ${selectedTab == Tabs.Reviews ? 'bg-amber-400 text-amber-900' : 'text-gray-500'}`}
+                className={`h-8 flex-1 rounded p-1 items-center font-medium transition-all ${selectedTab == Tabs.Reviews ? 'bg-amber-400 text-amber-900' : 'text-gray-500'}`}
                 onPress={() => setSelectedTab(Tabs.Reviews)}>
-                Reviews
+                <Text className=''>Reviews</Text>
               </Pressable>
             </View>
             {selectedTab == Tabs.Description && (
@@ -334,12 +399,38 @@ export default function ProductDetailScreen() {
         <View className="sticky bottom-0 flex-row items-center justify-between border-t border-amber-200 bg-white p-3">
           <View>
             <Text className="text-xs text-amber-700">Total Price</Text>
-            <Text className="text-lg font-bold text-amber-900">฿{data.price}</Text>
+            <Text className="text-lg font-bold text-amber-900">฿{quantity * (design?.product_details.base_price ?? 0)}</Text>
           </View>
-          <TouchableOpacity className="flex-row gap-2 rounded bg-amber-500 p-3">
+            <TouchableOpacity
+            onPress={() => {
+              console.log("test");
+              getToken().then(token => {
+              fetch(`${apiUrl}/api/cart/items`, {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                design_id: design?.id,
+                variant_id: selectedVariant?.id,
+                quantity: quantity,
+                }),
+              })
+                .then(res => res.json())
+                .then(data => {
+                  console.log('Added to cart:', data);
+                  router.push('/(tabs)/cart');
+                })
+                .catch(error => {
+                console.error('Error adding to cart:', error);
+                });
+              });
+            }}
+            className="flex-row gap-2 rounded bg-amber-500 p-3">
             <Feather name="shopping-cart" color="white" size={16} />
             <Text className="font-medium text-white">Add to Cart</Text>
-          </TouchableOpacity>
+            </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
