@@ -869,7 +869,6 @@ def create_order(clerk_user_id):
         order_response_data['items'] = [oi.to_dict() for oi in new_order.items]
         order_response_data['shipping_address'] = new_order.shipping_address.to_dict() if new_order.shipping_address else None
         order_response_data['billing_address'] = new_order.billing_address.to_dict() if new_order.billing_address else None
-        order_response_data["items"] = [item.to_dict() for item in order_response_data["items"]]
 
         return jsonify({"message": "Order placed successfully", "order": order_response_data}), 201
 
@@ -912,6 +911,12 @@ def get_orders(clerk_user_id):
         for order in paginated_orders.items:
             order_dict = order.to_dict() 
             order_dict["id"] = f"ORD{order.id:05d}"
+            order_items_list = []
+            if order.items:
+                for item in order.items:
+                    order_items_list.append(item.to_dict()) 
+            
+            order_dict["items"] = order_items_list
 
             orders_list_response.append(order_dict)
 
