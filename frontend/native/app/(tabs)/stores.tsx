@@ -69,7 +69,7 @@ export default function StoresScreen() {
                         <View className='px-[16px]'>
                             <View className='py-4 gap-2'>
                                 <Text className="font-medium text-amber-900 text-lg"> My Store </Text>
-                                <TouchableOpacity onPress={() => router.push('/store/123')} className='items-center' >
+                                <TouchableOpacity onPress={() => router.push('/store')} className='items-center' >
                                     <View className='rounded-2xl w-full bg-white h-fit shadow-sm p-4 flex-row'>
                                         <View className='rounded-full size-[6rem] bg-slate-200 overflow-hidden justify-center items-center'>
                                             <Text>{me.image}</Text>
