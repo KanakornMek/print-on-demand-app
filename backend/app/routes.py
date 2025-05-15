@@ -195,6 +195,23 @@ def get_users(clerk_user_id):
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@main_bp.route('/api/users/<int:user_id>', methods=['GET'])
+@clerk_auth_required
+def get_user_details(clerk_user_id, user_id):
+    try:
+        user = User.query.filter_by(id=user_id).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        user_dict = user.to_dict()
+        clerk_user_data = sdk.users.get(user_id=user.clerk_user_id)
+        user_dict["profile_image_url"] = clerk_user_data.profile_image_url
+
+        return jsonify(user_dict), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @main_bp.route('/api/products', methods=['GET'])
 def get_products():
