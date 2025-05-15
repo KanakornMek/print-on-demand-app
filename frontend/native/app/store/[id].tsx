@@ -2,10 +2,109 @@ import { canGoBack } from 'expo-router/build/global-state/routing';
 import { TouchableOpacity, View, Text, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from '@expo/vector-icons/Feather';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import ProductCard from '@/components/common/ProductCard';
+import { useAuth, useUser } from '@clerk/clerk-expo';
+import { useCallback, useEffect, useState } from 'react';
+import { Image } from 'expo-image';
+
+
+interface Design {
+  id: number;
+  name: string;
+  final_product_image_url: string;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+  product_id: number;
+  product_details: {
+    id: number;
+    name: string;
+    description: string;
+    image_url: string;
+    base_price: number;
+    category_id: number;
+  };
+  creator_name: string;
+}
+
 
 export default function StoreDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+
+  const { getToken } = useAuth();
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+
+  const { user } = useUser();
+
+  const [designs, setDesigns] = useState<Design[]>([]);
+  const [store, setStore] = useState({
+    id: 0,
+    clerk_user_id: '',
+    username: '',
+    profile_image_url: '',
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchStore = async () => {
+        try {
+          const token = await getToken();
+          const response = await fetch(`${apiUrl}/api/users/${id}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          const res = await response.json();
+          console.log('Fetched store:', res);
+          setStore(res);
+        } catch (error) {
+          console.error('Error fetching store:', error);
+        }
+      }
+      
+      fetchStore();
+      return () => {
+        console.log('Cleanup function called');
+      }
+    }, [])
+  );
+  
+  useFocusEffect(
+    useCallback(() => {
+      const fetchDesigns = async () => {
+        try {
+          const token = await getToken();
+          const response = await fetch(`${apiUrl}/api/designs/user/${id}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          const res = await response.json();
+          console.log('Fetched designs:', res.data);
+          setDesigns(res.data);
+        } catch (error) {
+          console.error('Error fetching designs:', error);
+        }
+      };
+      fetchDesigns();
+      return () => {
+        console.log('Cleanup function called');
+      }
+    }
+    , [])
+  )
+
+  useEffect(() => {
+    console.log('=========================');
+    console.log('Designs:', designs);
+    console.log('=========================');
+  }, [designs]);
+
   const router = useRouter();
   let data = {
     username: 'john.smith',
@@ -39,10 +138,15 @@ export default function StoreDetailScreen() {
         <View className="bg-amber-100 px-5 py-3 border-b gap-2 border-amber-600">
           <View className="flex-row items-center my-2">
             <View className="rounded-full size-[6rem] bg-white overflow-hidden justify-center items-center">
-              <Text>{data.image}</Text>
+              <Image
+                source={store?.profile_image_url || "https://placehold.co/80"}
+                style={{ width: 80, height: 80, borderRadius: 9999 }}
+                contentFit="cover"
+                alt="Profile Image"
+              />
             </View>
             <View className="px-5 justify-between gap-2 w-fit">
-              <Text className="font-medium text-amber-900 text-lg">{data.name}</Text>
+              <Text className="font-medium text-amber-900 text-lg">{store.username}</Text>
               <View className="flex-row justify-between gap-2">
                 <View>
                   <Text className="font-medium text-amber-900 text-base">18</Text>
@@ -68,15 +172,15 @@ export default function StoreDetailScreen() {
             className="w-full flex-1 pt-[16px]"
             columnWrapperClassName="justify-between items-center w-full"
             numColumns={2}
-            data={data0}
-            keyExtractor={(item) => item.id}
+            data={designs}
+            keyExtractor={(item) => String(item.id)}
             renderItem={({ item }) => (
               <ProductCard
-                image={item.image}
+                image={item.final_product_image_url}
                 name={item.name}
-                creator={item.creator}
-                price={item.price}
-                onPress={() => router.push('/design/123')}
+                creator={item.creator_name}
+                price={item.product_details.base_price}
+                onPress={() => router.push(`/design/123`)}
               />
             )}
           />

@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function ImagePickerExample() {
 const router = useRouter();
   const [image, setImage] = useState<string | null>(null);
+  
 
   const pickImage = async () => {
     // No permissions request is necessary for launching the image library
