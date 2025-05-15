@@ -6,11 +6,11 @@ import { useRouter } from "expo-router";
 import ProductCard from '@/components/common/ProductCard';
 
 
-export default function StoreDetailScreen() {
+export default function MyStoreDetailScreen() {
     const router = useRouter();
     let data = {
         username: 'john.smith',
-        name: 'John Smith',
+        name: 'John Smith (Me)',
         image: 'img',
         followers: 12,
         following: 15,
@@ -107,10 +107,16 @@ export default function StoreDetailScreen() {
                         numColumns={2}
                         data = {data0}
                         renderItem = { ({item}) => (
-                            <ProductCard image={item.image} name={item.name} creator={item.creator} price={item.price} onPress = { () => router.push('/product/123')}></ProductCard>
+                            <ProductCard image={item.image} name={item.name} creator={item.creator} price={item.price} onPress = { () => router.push('/design/123')}></ProductCard>
                         )
                         } 
                     />
+                    <TouchableOpacity 
+                        className='size-[36] bg-amber-500 absolute bottom-5 right-5 rounded-full overflow-hidden items-center justify-center'
+                        onPress = { () => router.push('/design/123')}
+                    >
+                        <Feather name="plus" size={22} color="#fff"/>
+                    </TouchableOpacity>
                 </View>
             </View>
         </SafeAreaView>

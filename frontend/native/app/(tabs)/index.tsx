@@ -20,7 +20,7 @@ export default function HomeScreen() {
   let data0 = [
     {
       image : 'img',
-      name: 'Name',
+      name: 'NameNameNameNameName',
       creator: 'Creator',
       price: 100
     },
