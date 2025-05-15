@@ -32,43 +32,33 @@ def overlay_images(shirt_image, design_image, placement_box):
 
         original_design_width, original_design_height = design_image.size
 
-        ratio = 1.0 # Default to 1.0
-        if original_design_width > 0 and original_design_height > 0: # Avoid division by zero
+        ratio = 1.0 
+        if original_design_width > 0 and original_design_height > 0:
             ratio = min(box_width / original_design_width, box_height / original_design_height)
         
-        # Apply the DESIGN_MAX_SIZE_PERCENT constraint
-        # This means the design will not use more than X% of the allocated placement_box dimension
         ratio = min(ratio, DESIGN_MAX_SIZE_PERCENT)
 
 
         new_design_width = int(original_design_width * ratio)
         new_design_height = int(original_design_height * ratio)
 
-        # Ensure new dimensions are at least 1px if original had size
         if original_design_width > 0 and new_design_width == 0: new_design_width = 1
         if original_design_height > 0 and new_design_height == 0: new_design_height = 1
 
         if new_design_width == 0 or new_design_height == 0:
-            # Handle case of zero-size design after scaling (e.g. if original was 0)
-            # Or if box_width/box_height were 0 and ratio became 0
             print("Warning: Resized design has zero width or height.")
-            # One option is to not paste the design, or return original shirt
-            # For now, let's proceed, paste will handle empty image if it occurs.
             
         resized_design = design_image.resize((new_design_width, new_design_height), Image.Resampling.LANCZOS)
 
-        # Calculate top-left position to center the resized design within the placement_box
         paste_x = placement_box[0] + (box_width - new_design_width) // 2
         paste_y = placement_box[1] + (box_height - new_design_height) // 2
 
-        # Create a temporary transparent layer for the design
         temp_shirt_overlay = Image.new('RGBA', shirt_image.size, (0, 0, 0, 0))
-        temp_shirt_overlay.paste(resized_design, (paste_x, paste_y), resized_design) # Use resized_design as mask for its alpha
+        temp_shirt_overlay.paste(resized_design, (paste_x, paste_y), resized_design)
 
-        # Composite the design overlay onto the shirt image
         combined_image = Image.alpha_composite(shirt_image, temp_shirt_overlay)
 
-        return combined_image.convert("RGB") # Convert to RGB for saving as JPEG or if alpha not needed
+        return combined_image.convert("RGB")
 
     except Exception as e:
         print(f"Error during image overlay: {e}")

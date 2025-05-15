@@ -1008,15 +1008,15 @@ def get_user_designs(clerk_user_id):
 def get_design_detail(clerk_user_id, design_id):
     user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
     if not user:
-        return jsonify({"error": "User not found"}), 404 # Should not happen if clerk_auth_required works
+        return jsonify({"error": "User not found"}), 404
 
     try:
         design = Design.query.options(
             joinedload(Design.variant).joinedload(ProductVariant.product)
-        ).filter_by(id=design_id, user_id=user.id).first()
+        ).filter_by(id=design_id).first()
 
         if not design:
-            return jsonify({"error": "Design not found or access denied"}), 404
+            return jsonify({"error": "Design not found"}), 404
         
         design_dict = design.to_dict()
         design_dict['variant_details'] = design.variant.to_dict() if design.variant else None
@@ -1093,6 +1093,9 @@ def delete_design(clerk_user_id, design_id):
 
 
 from .print_on_shirt import overlay_images, fetch_image_from_url, allowed_file, Image, DESIGN_PLACEMENT_BOX, BytesIO
+import uuid
+from firebase_admin import storage
+import firebase_admin.exceptions
 
 @main_bp.route('/api/print-on-shirt', methods=['POST'])
 def print_on_shirt():
@@ -1132,10 +1135,38 @@ def print_on_shirt():
         return jsonify({"error": "Failed to overlay images."}), 500
 
     img_io = BytesIO()
-    result_image_pil.save(img_io, 'PNG') # You can change to JPEG if preferred
-    img_io.seek(0)
+    try:
+        image_format = 'PNG'
+        mime_type = f'image/{image_format.lower()}'
+        result_image_pil.save(img_io, format=image_format)
+        img_io.seek(0)
+    except Exception as e:
+        return jsonify({"error": f"Failed to save processed image to memory buffer: {str(e)}"}), 500
 
-    return send_file(img_io, mimetype='image/png')
+    try:
+        if not firebase_admin._apps:
+            return jsonify({"error": "Firebase Admin SDK not initialized."}), 500
+
+        bucket = storage.bucket()
+
+        unique_filename = f"printed_shirts/{uuid.uuid4()}.{image_format.lower()}"
+
+        blob = bucket.blob(unique_filename)
+
+        blob.upload_from_file(img_io, content_type=mime_type)
+
+        blob.make_public()
+        public_url = blob.public_url
+
+        return jsonify({
+            "message": "Image processed and uploaded successfully to Firebase Storage.",
+            "imageUrl": public_url
+        }), 200
+
+    except firebase_admin.exceptions.FirebaseError as fe:
+        return jsonify({"error": f"Firebase Storage error: {str(fe)}"}), 500
+    except Exception as e:
+        return jsonify({"error": f"An error occurred during Firebase upload: {str(e)}"}), 500
 
 
 @main_bp.route('/api/items', methods=['GET'])
