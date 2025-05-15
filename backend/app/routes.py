@@ -178,7 +178,7 @@ def get_users(clerk_user_id):
         users_list_response = []
         for user in paginated_users.items:
             user_dict = user.to_dict()
-            clerk_user_data = sdk.users.get(user.clerk_user_id)
+            clerk_user_data = sdk.users.get(user_id=user.clerk_user_id)
             user_dict["profile_image_url"] = clerk_user_data.profile_image_url
             users_list_response.append(user_dict)
 
