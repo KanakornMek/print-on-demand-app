@@ -809,9 +809,10 @@ def create_order(clerk_user_id):
             return jsonify({"error": "Invalid shipping option ID"}), 400
         
         selected_shipping_info = selected_shipping_info.to_dict()
-        shipping_cost = selected_shipping_info.get("base_cost", 0.00)
+        shipping_cost = selected_shipping_info.get("base_cost", 4.99)
         shipping_option_name = selected_shipping_info.get("name", "Standard Shipping")
-
+        
+        shipping_cost = Decimal(str(shipping_cost))
         subtotal = Decimal("0.00")
         order_item_instances = []
         for item in cart_items:
