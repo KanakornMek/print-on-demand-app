@@ -15,6 +15,7 @@ interface Designs {
   user_id: number;
   created_at: string;
   updated_at: string;
+  product_id: number;
   product_details: {
     id: number;
     name: string;
@@ -22,17 +23,6 @@ interface Designs {
     image_url: string;
     base_price: number;
     category_id: number;
-  };
-  variant_id: number;
-  variant_details: {
-    id: number;
-    product_id: number;
-    color: string;
-    size: string;
-    image_url: string;
-    price_modifier: number;
-    stock_quantity: number;
-    stock_status: string;
   };
   creator_name: string;
 }
