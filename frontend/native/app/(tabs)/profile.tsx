@@ -43,17 +43,16 @@ export default function ProfileScreen() {
           <Avatar imageUrl={user.imageUrl}/>
           <Text className='font-bold text-lg text-amber-900'>{user.fullName}</Text>
           <Text className='text-sm text-amber-700'>{user.primaryEmailAddress?.emailAddress}</Text>
-          <TouchableOpacity className='border border-amber-300 rounded-lg px-4 py-2 mt-4 flex-1 items-center justify-center'>
+          {/* <TouchableOpacity className='border border-amber-300 rounded-lg px-4 py-2 mt-4 flex-1 items-center justify-center'>
             <Text className='text-sm text-amber-900'>Edit Profile</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View> 
 
         <View className='bg-white rounded-lg p-4 mb-6 shadow-sm'>
           <Text className="font-semibold text-amber-900 mb-3">My Orders</Text>
           <View className="y-3 gap-2">
             {ordersData.map((order) => (
-              <Link href={`/orders/${order.id}`} key={order.id} asChild>
-                <TouchableOpacity className="flex-row justify-between items-center p-3 border border-amber-200 rounded-lg active:bg-amber-100">
+                <View className="flex-row justify-between items-center p-3 border border-amber-200 rounded-lg active:bg-amber-100">
                   <View>
                     <Text className="font-medium text-amber-900">{order.id}</Text>
                     <Text className="text-xs text-amber-700">
@@ -69,16 +68,15 @@ export default function ProfileScreen() {
                       {order.status}
                     </Text>
                   </View>
-                </TouchableOpacity>
-              </Link>
+                </View>
             ))}
           </View>
-          <TouchableOpacity className="py-2 px-4 rounded-md flex items-center justify-center bg-transparent w-full mt-3">
+          {/* <TouchableOpacity className="py-2 px-4 rounded-md flex items-center justify-center bg-transparent w-full mt-3">
             <Text className="text-amber-700">View All Orders</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
         <View className="bg-white rounded-lg shadow-sm">
-          <View className="p-2">
+          {/* <View className="p-2">
             {menuItemsData.map((item, index) => {
               return (
                 <Link href={item.href} key={index} asChild>
@@ -92,7 +90,7 @@ export default function ProfileScreen() {
               );
             })}
           </View>
-          <View className="h-[1px] bg-amber-200" />
+          <View className="h-[1px] bg-amber-200" /> */}
           <View className="p-2">
             <TouchableOpacity 
               className="w-full justify-start items-center flex-row bg-transparent active:bg-red-50  py-2 px-4 rounded-md flex"
