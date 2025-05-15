@@ -368,7 +368,8 @@ def add_to_cart(clerk_user_id):
         if not variant:
             return jsonify({"error": "Product variant not found"}), 404
         
-        design = Design.query.filter_by(id=design_id, user_id=user.id).first()
+        design = Design.query.filter_by(id=design_id).first()
+
         if not design:
             return jsonify({"error": "Design not found or not accessible by user"}), 404
         if design.product_id != variant.product_id:
@@ -1026,8 +1027,11 @@ def get_user_designs(clerk_user_id):
         page = request.args.get('page', 1, type=int)
         limit = request.args.get('limit', 10, type=int)
 
-        designs_query = Design.query\
-            .options(joinedload(Design.variant).joinedload(ProductVariant.product))\
+        designs_query = Design.query \
+            .options(
+                joinedload(Design.product), 
+                joinedload(Design.user)  
+            ) \
             .order_by(Design.created_at.desc())
         
         paginated_designs = designs_query.paginate(page=page, per_page=limit, error_out=False)
@@ -1036,10 +1040,17 @@ def get_user_designs(clerk_user_id):
         designs_data = []
         for design in designs_on_page:
             design_dict = design.to_dict()
-            design_dict['variant_details'] = design.variant.to_dict() if design.variant else None
-            if design.variant and design.variant.product:
-                design_dict['product_details'] = design.variant.product.to_dict()
-            design_dict['creator_name'] = design.user.username
+            
+            if design.product:
+                design_dict['product_details'] = design.product.to_dict()
+            else:
+                design_dict['product_details'] = None
+            
+            if design.user:
+                design_dict['creator_name'] = design.user.username
+            else:
+                design_dict['creator_name'] = "Unknown" 
+                
             designs_data.append(design_dict)
 
         pagination_details = {
@@ -1066,17 +1077,27 @@ def get_design_detail(clerk_user_id, design_id):
         return jsonify({"error": "User not found"}), 404
 
     try:
-        design = Design.query.options(
-            joinedload(Design.variant).joinedload(ProductVariant.product)
-        ).filter_by(id=design_id).first()
+        design_query = Design.query.options(
+            joinedload(Design.product),
+            joinedload(Design.user)
+        ).filter_by(id=design_id)
+
+        design = design_query.first()
 
         if not design:
             return jsonify({"error": "Design not found"}), 404
         
         design_dict = design.to_dict()
-        design_dict['variant_details'] = design.variant.to_dict() if design.variant else None
-        if design.variant and design.variant.product:
-                design_dict['product_details'] = design.variant.product.to_dict()
+        
+        if design.product:
+            design_dict['product_details'] = design.product.to_dict()
+        else:
+            design_dict['product_details'] = None
+        
+        if design.user:
+            design_dict['creator_name'] = design.user.username
+        else:
+            design_dict['creator_name'] = "Unknown"
 
         return jsonify(design_dict), 200
     except Exception as e:
