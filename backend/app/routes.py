@@ -1088,7 +1088,7 @@ def get_user_designs(clerk_user_id):
 
     try:
         page = request.args.get('page', 1, type=int)
-        limit = request.args.get('limit', 10, type=int)
+        limit = request.args.get('limit', 1000, type=int)
 
         designs_query = Design.query \
             .options(
