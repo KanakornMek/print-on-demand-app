@@ -37,7 +37,6 @@ const useWarmUpBrowser = () => {
 export default function LoginScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const { startSSOFlow } = useSSO();
-  startSSOFlow({ strategy: 'oauth_google' });
   const router = useRouter();
 
   const [emailAddress, setEmailAddress] = React.useState('');
@@ -59,8 +58,10 @@ export default function LoginScreen() {
         identifier: emailAddress,
         password,
       });
+      console.log("test")
 
       if (signInAttempt.status === 'complete') {
+        console.log('Sign in completed1');
         await setActive({ session: signInAttempt.createdSessionId });
         router.replace('/(tabs)');
       } else {

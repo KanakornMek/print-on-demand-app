@@ -1,5 +1,5 @@
-import React, {useState, useCallback} from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import React, {useState, useCallback, useMemo, useEffect} from 'react';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, ActivityIndicator } from 'react-native';
 import { Link, router, useFocusEffect, useRouter } from 'expo-router';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { FlatList } from 'react-native';
@@ -39,8 +39,14 @@ export default function HomeScreen() {
   });
 
   const [designs, setDesigns] = useState<Designs[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
+  const [isSeaching, setIsSearching] = useState<boolean>(false);
+  const [initialDataLoading, setInitialDataLoading] = useState<boolean>(true);
+
 
   useFocusEffect(useCallback(() => {
+    let isActive = true;
     const fetchDesigns = async () => {
       try {
         const token = await getToken();
@@ -57,14 +63,49 @@ export default function HomeScreen() {
         console.log('Fetched designs:', res);
         setDesigns(res.data);
       } catch (error) {
+
         console.error('Error fetching designs:', error);
+        if(isActive) {
+          setDesigns([]);
+        }
+      } finally {
+        setInitialDataLoading(false);
       }
     }
     fetchDesigns();
     return () => {
+      isActive = false;
       console.log('Cleanup function called');
     }
   }, []));
+
+  useEffect(() => {
+    if (searchQuery === debouncedSearchQuery) {
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setIsSearching(false);
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+    }
+  }, [searchQuery, debouncedSearchQuery]);
+
+
+  const filteredDesigns = useMemo(() => {
+  if (!debouncedSearchQuery) {
+    return designs;
+  }
+  return designs.filter(design => {
+    const nameMatch = design.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+    const creatorMatch = design.creator_name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+    return nameMatch || creatorMatch;
+  });
+}, [designs, debouncedSearchQuery]);
+
 
 
   // dummy data
@@ -133,6 +174,8 @@ export default function HomeScreen() {
               <TextInput
                 autoCapitalize="none"
                 placeholder="Search design or name..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
                 className="h-12 w-full rounded-full border border-amber-300 bg-white px-4 pl-11 text-base text-amber-900 focus:ring-amber-500"
                 placeholderTextColor={'#fbbf24'}
               />
@@ -146,17 +189,24 @@ export default function HomeScreen() {
           </View>
         </View>
         <View className="w-full flex-1 items-center px-[16px]">
+          {(initialDataLoading || isSeaching) ? (
+              <View className="flex-1 items-center justify-center">
+                <ActivityIndicator size="large" color="#f59e0b" />
+              </View>
+              ) : (
           <FlatList
               className='w-full flex-1'
               columnWrapperClassName='justify-between items-center w-full'
               numColumns={2}
-              data = {designs}
+              data = {filteredDesigns}
+              keyExtractor={(item) => item.id.toString()}
               renderItem = { ({item}) => (
                   <ProductCard image={item.final_product_image_url} name={item.name} creator={item.creator_name} price={item.product_details.base_price} onPress={()=>{router.push(`/product/${item.id}`)}}></ProductCard>
                   
                 )
               } 
-          />
+          />)
+          }
         </View>
       </View>
     </SafeAreaView>

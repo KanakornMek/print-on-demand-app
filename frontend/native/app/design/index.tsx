@@ -66,10 +66,15 @@ const router = useRouter();
           name: designName,
           description: description,
           final_product_image_url: data.imageUrl,
-          variant_id: 1
+          product_id: 1
         }),
       });
-
+      if(!res.ok) {
+        console.error('Error saving design:', res.statusText);
+        const errData = await res.json();
+        console.error('Error details:', errData);
+        return;
+      }
       const resData = await res.json();
       console.log('Design saved:', resData);
       console.log("Design created successfully");
