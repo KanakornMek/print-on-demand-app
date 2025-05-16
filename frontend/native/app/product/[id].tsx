@@ -176,6 +176,7 @@ interface Design {
   product_id: number;
   product_details: ProductDetails;
   creator_name: string;
+  creator_image_url: string;
 }
 
 
@@ -272,7 +273,7 @@ export default function ProductDetailScreen() {
         <ScrollView className="flex-1">
           <View className="flex items-center justify-center">
             <Image
-              source={{ uri: data.image }}
+              source={{ uri: design?.final_product_image_url ||"https://placehold.co/100" }}
               style={{ height: 256, width: '100%' }}
               resizeMode="cover"
             />
@@ -298,22 +299,30 @@ export default function ProductDetailScreen() {
 
             <View className="gap-4">
                 <View>
-                <Text className="mb-2 text-sm font-medium text-amber-900">Color</Text>
-                <ColorSelector
-                  colors={design?.product_details.variants.map(v => v.color.toLowerCase()) || []}
-                  selectedColor={chosenColor}
-                  onSelectColor={handleColorSelection}
-                />
+                  <Text className="mb-2 text-sm font-medium text-amber-900">Color</Text>
+                  <ColorSelector
+                    colors={
+                      design?.product_details.variants
+                        ? Array.from(new Set(design.product_details.variants.map(v => v.color.toLowerCase())))
+                        : []
+                    }
+                    selectedColor={chosenColor}
+                    onSelectColor={handleColorSelection}
+                  />
                 </View>
 
-              <View>
+                <View>
                 <Text className="mb-2 text-sm font-medium text-amber-900">Size</Text>
                 <SizeSelector
-                  sizes={design?.product_details.variants.map(v => v.size) || []}
+                  sizes={
+                  design?.product_details.variants
+                    ? Array.from(new Set(design.product_details.variants.map(v => v.size)))
+                    : []
+                  }
                   selectedSize={chosenSize}
                   onSelectSize={handleSizeSelection}
                 />
-              </View>
+                </View>
 
               <View>
                 <Text className="mb-2 text-sm font-medium text-amber-900">Quantity</Text>
@@ -340,10 +349,10 @@ export default function ProductDetailScreen() {
           <View className="flex-row items-center justify-between border-y border-amber-300 bg-white p-4">
             <View className="flex-row items-center gap-4">
               <Image
-                source={{ uri: data.creatorProfileImage }}
+                source={{ uri: design?.creator_image_url || "https://placehold.co/100" }}
                 style={{ width: 64, height: 64, borderRadius: 999 }}
               />
-              <Text className="text-lg font-medium text-amber-900">{data.creatorName}</Text>
+              <Text className="text-lg font-medium text-amber-900">{design?.creator_name}</Text>
             </View>
             <Pressable onPress={()=>setIsFollowed(!isFollowed)} className="rounded-md border items-center justify-center border-amber-400 h-8 bg-white w-28">
               {isFollowed ? (

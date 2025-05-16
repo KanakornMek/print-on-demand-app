@@ -1,14 +1,74 @@
-import React from 'react';
+import React, { use, useCallback } from 'react';
 import { View, Text, Button, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { Link, useRouter } from 'expo-router';
+import { Link, useFocusEffect, useRouter } from 'expo-router';
 import Feather from '@expo/vector-icons/Feather';
 import Avatar from '@/components/common/Avatar';
 
+
+interface Order {
+  billing_address_id: number;
+  created_at: string;
+  id: string;
+  items: {
+    design_id: number;
+    id: number;
+    item_total: number;
+    order_id: number;
+    product_name_snapshot: string;
+    quantity: number;
+    unit_price_snapshot: number;
+    variant_details_snapshot: string;
+    variant_id: number;
+  }[];
+  payment_method: string;
+  shipping_address_id: number;
+  shipping_cost: number;
+  shipping_option_name: string;
+  status: string;
+  subtotal: number;
+  tax_amount: number;
+  total_amount: number;
+  tracking_number: string | null;
+  updated_at: string;
+  user_id: number;
+}
+
 export default function ProfileScreen() {
-  const { isSignedIn, signOut } = useAuth();
+  const { isSignedIn, signOut, getToken } = useAuth();
   const { user } = useUser();
   const router = useRouter();
+
+  const [orders, setOrders] = React.useState<Order[]>([]);
+
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+  
+  useFocusEffect(
+    useCallback(() => {
+      const fetchOrders = async () => {
+        try {
+          const token = await getToken();
+          const response = await fetch(`${apiUrl}/api/orders`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            }
+          });
+          const res = await response.json();
+          console.log('Fetched orders:', res);
+          setOrders(res.data)
+        } catch (error) {
+          console.error('Error fetching orders:', error);
+        }
+      }
+      fetchOrders();
+
+      return () => {
+        console.log('Cleanup function called');
+      }
+    }, [])
+  )
 
   const handleSignOut = async () => {
     try {
@@ -25,7 +85,7 @@ export default function ProfileScreen() {
   }
 
   const menuItemsData: { iconName: "heart" | "credit-card" | "package" | "settings"; label: string; href: string }[] = [
-    { iconName: "heart", label: "Saved Designs", href: "/saved-designs" },
+    // { iconName: "heart", label: "Saved Designs", href: "/saved-designs" },
     { iconName: "credit-card", label: "Payment Methods", href: "/payment-methods" },
     { iconName: "package", label: "Shipping Addresses", href: "/addresses" },
     { iconName: "settings", label: "Settings", href: "/settings" },
@@ -51,12 +111,16 @@ export default function ProfileScreen() {
         <View className='bg-white rounded-lg p-4 mb-6 shadow-sm'>
           <Text className="font-semibold text-amber-900 mb-3">My Orders</Text>
           <View className="y-3 gap-2">
-            {ordersData.map((order) => (
-                <View className="flex-row justify-between items-center p-3 border border-amber-200 rounded-lg active:bg-amber-100">
+            {orders.map((order,idx) => (
+                <View key={idx} className="flex-row justify-between items-center p-3 border border-amber-200 rounded-lg active:bg-amber-100">
                   <View>
                     <Text className="font-medium text-amber-900">{order.id}</Text>
                     <Text className="text-xs text-amber-700">
-                      {order.date} • {order.items} items
+                        {new Date(order.created_at).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })} • {order.items.length} items
                     </Text>
                   </View>
                   <View>
@@ -65,7 +129,7 @@ export default function ProfileScreen() {
                         order.status === "Delivered" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
                       }`}
                     >
-                      {order.status}
+                      {order.status.replace(/_/g, ' ')}
                     </Text>
                   </View>
                 </View>
@@ -76,7 +140,7 @@ export default function ProfileScreen() {
           </TouchableOpacity> */}
         </View>
         <View className="bg-white rounded-lg shadow-sm">
-          {/* <View className="p-2">
+          <View className="p-2">
             {menuItemsData.map((item, index) => {
               return (
                 <Link href={item.href} key={index} asChild>
@@ -90,7 +154,7 @@ export default function ProfileScreen() {
               );
             })}
           </View>
-          <View className="h-[1px] bg-amber-200" /> */}
+          <View className="h-[1px] bg-amber-200" />
           <View className="p-2">
             <TouchableOpacity 
               className="w-full justify-start items-center flex-row bg-transparent active:bg-red-50  py-2 px-4 rounded-md flex"

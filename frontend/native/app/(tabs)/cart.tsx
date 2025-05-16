@@ -120,7 +120,7 @@ export default function Cart() {
                 {cartItems.map((item) => (
                   <View key={item.id} className="mt-4 flex-row rounded-lg bg-white p-3 shadow-sm">
                     <Image
-                      source={item.product_image_url || 'https://placehold.co/100'}
+                      source={item.design_final_image_url || 'https://placehold.co/100'}
                       style={{
                         width: 80,
                         height: 80,
@@ -134,7 +134,7 @@ export default function Cart() {
                     <View className="flex-1">
                       <View className="flex-row justify-between">
                         <Text className="font-medium text-amber-900">{item.product_name}</Text>
-                        <Text className="font-medium text-amber-900">${item.unit_price.toFixed(2)}</Text>
+                        <Text className="font-medium text-amber-900">฿{item.unit_price.toFixed(2)}</Text>
                       </View>
                       <Text className="mb-2 text-xs text-amber-700">
                         {item.variant_color + ' / ' + item.variant_size}
@@ -186,16 +186,16 @@ export default function Cart() {
                 <View className="y-2">
                   <View className="flex-row justify-between">
                     <Text className="text-sm text-amber-700">Subtotal</Text>
-                    <Text className="text-sm text-amber-900">${subtotal.toFixed(2)}</Text>
+                    <Text className="text-sm text-amber-900">฿{subtotal.toFixed(2)}</Text>
                   </View>
                   <View className="flex-row justify-between">
                     <Text className="text-sm text-amber-700">Shipping</Text>
-                    <Text className="text-sm text-amber-900">${shipping.toFixed(2)}</Text>
+                    <Text className="text-sm text-amber-900">฿{shipping.toFixed(2)}</Text>
                   </View>
                   <View className="my-2 h-[1px] bg-amber-200" />
                   <View className="flex-row justify-between">
                     <Text className="font-semibold text-amber-900">Total</Text>
-                    <Text className="font-semibold text-amber-900">${total.toFixed(2)}</Text>
+                    <Text className="font-semibold text-amber-900">฿{total.toFixed(2)}</Text>
                   </View>
                 </View>
               </View>
