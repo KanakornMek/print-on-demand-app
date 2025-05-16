@@ -1166,7 +1166,7 @@ def get_design_detail(clerk_user_id, design_id):
             design_dict['creator_name'] = design.user.username
             current_app.logger.info(f"Design user ID: {design.user.clerk_user_id}")
             clerk_user_data = sdk.users.get(user_id=design.user.clerk_user_id)
-            clerk_user_data["creator_image_url"] = clerk_user_data.profile_image_url
+            design_dict["creator_image_url"] = clerk_user_data.profile_image_url
             
         else:
             design_dict['creator_name'] = "Unknown"
