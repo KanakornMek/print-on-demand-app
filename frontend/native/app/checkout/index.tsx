@@ -304,6 +304,9 @@ export default function Checkout() {
             onPress={async () => {
               try {
               const token = await getToken();
+              console.log('Selected Address:', selectedAddress);
+              console.log('Selected Payment Option:', selectedPaymentOption);
+              console.log('Selected Shipping Option:', selectedShippingOption);
               const response = await fetch(`${apiUrl}/api/orders`, {
                 method: 'POST',
                 headers: {
@@ -313,7 +316,7 @@ export default function Checkout() {
                 body: JSON.stringify({
                   shipping_address_id: selectedAddress?.id,
                   shipping_option_id: 1,
-                  payment_method: selectedPaymentOption,
+                  payment_method: paymentOptions[selectedPaymentOption].label,
                 }),
               });
               const data = await response.json();

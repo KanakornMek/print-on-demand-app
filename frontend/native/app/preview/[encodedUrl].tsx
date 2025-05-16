@@ -1,11 +1,25 @@
-import { useRouter } from "expo-router";
-import { TouchableOpacity, View, Text, Image } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { TouchableOpacity, View, Text } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from '@expo/vector-icons/Feather';
 import { canGoBack } from "expo-router/build/global-state/routing";
+import { useAuth } from "@clerk/clerk-expo";
+import { useState } from "react";
 
 
 export default function PreviewScreen() {
+    const { encodedUrl } = useLocalSearchParams<{ encodedUrl : string }>();
+    const decodedUrl = decodeURIComponent(encodedUrl as string);
+    const url = decodedUrl ? { uri: decodedUrl } : null;
+
+    const { getToken } = useAuth();
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+
+
+
+
+    
     const router = useRouter();
 
     return (
@@ -30,13 +44,8 @@ export default function PreviewScreen() {
                     <Text className='font-medium text-amber-900 text-xl'>Product Preview</Text>
                     <View className='items-center'>
                         <Image 
-                            source={{ uri: 'https://www.craftclothing.ph/cdn/shop/files/standard-plain-round-neck-shirt-white_49d15c1b-697e-45e2-b40b-29807d377b6e_600x.png?v=1740991398'}}
+                            source={url || 'https://placehold.co/100' }
                             style={{ height:300, width:300 , position:'absolute', zIndex:0}}
-                        />
-                        <Image 
-                            source={{ uri: 'https://placehold.co/100' } } 
-                            style={{ height:150, width:80 , position:'absolute', top:40 , zIndex:1}}
-                            resizeMode='contain'
                         />
                     </View>
                 </View>
