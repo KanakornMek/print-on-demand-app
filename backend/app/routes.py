@@ -1049,25 +1049,25 @@ def create_design(clerk_user_id):
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    variant_id = data.get('variant_id')
+    product_id = data.get('product_id')
     final_product_image_url = data.get('final_product_image_url')
     name = data.get('name')
 
-    if not variant_id or not isinstance(variant_id, int):
+    if not product_id or not isinstance(product_id, int):
         return jsonify({"error": "Missing or invalid 'variant_id'"}), 400
     if not final_product_image_url or not isinstance(final_product_image_url, str):
         return jsonify({"error": "Missing or invalid 'final_product_image_url'"}), 400
     if name and not isinstance(name, str):
         return jsonify({"error": "Invalid 'name', must be a string"}), 400
 
-    variant = ProductVariant.query.get(variant_id)
+    variant = Product.query.get(product_id)
     if not variant:
         return jsonify({"error": "ProductVariant not found"}), 404
 
     try:
         new_design = Design(
             user_id=user.id,
-            variant_id=variant_id,
+            product_id=product_id,
             final_product_image_url=final_product_image_url,
             name=name
         )
