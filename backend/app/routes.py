@@ -1120,8 +1120,8 @@ def get_user_designs(clerk_user_id):
             "total_items": paginated_designs.total,
             "total_pages": paginated_designs.pages,
             "current_page": paginated_designs.page,
-            "next_page": paginated_designs.next_page_num if paginated_designs.has_next else None,
-            "prev_page": paginated_designs.prev_page_num if paginated_designs.has_prev else None
+            # "next_page": paginated_designs.next_page_num if paginated_designs.has_next else None,
+            # "prev_page": paginated_designs.prev_page_num if paginated_designs.has_prev else None
         }
 
         return jsonify({
