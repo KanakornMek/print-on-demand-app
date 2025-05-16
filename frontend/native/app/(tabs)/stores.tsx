@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, Button, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from '@expo/vector-icons/Feather';
@@ -18,10 +18,10 @@ export default function StoresScreen() {
     const router = useRouter();
     const {getToken, userId} = useAuth();
     const { user } = useUser();
-
     const apiUrl = process.env.EXPO_PUBLIC_API_URL;
 
-    const [stores, setStores] = React.useState<Store[]>([]);
+    const [stores, setStores] = useState<Store[]>([]);
+
 
     useFocusEffect(
         useCallback(()=> {
@@ -142,7 +142,7 @@ export default function StoresScreen() {
                                         return null;
                                     }
                                     return (
-                                        <TouchableOpacity onPress={() => router.push(`/store/${other.id}`)} key={idx} className='items-center'>
+                                        <TouchableOpacity onPress={() => router.push(`/store/${other.id}?bio=${bio[idx]}`)} key={idx} className='items-center'>
                                             <View className='rounded-2xl w-full bg-white h-fit shadow-sm   p-4 flex-row'>
                                                 <View className='rounded-full size-[6rem] bg-slate-200 overflow-hidden justify-center items-center'>
                                                     {/* <Text>{other.profile_image_url}</Text> */}

@@ -30,7 +30,8 @@ interface Design {
 
 
 export default function StoreDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, bio } = useLocalSearchParams<{ id: string, bio?: string }>();
+
 
   const { getToken } = useAuth();
   const apiUrl = process.env.EXPO_PUBLIC_API_URL;
@@ -99,11 +100,6 @@ export default function StoreDetailScreen() {
     , [])
   )
 
-  useEffect(() => {
-    console.log('=========================');
-    console.log('Designs:', designs);
-    console.log('=========================');
-  }, [designs]);
 
   const router = useRouter();
   let data = {
@@ -163,7 +159,7 @@ export default function StoreDetailScreen() {
               </View>
             </View>
           </View>
-          <Text className="font-normal text-amber-900 text-base my-2">{data.bio}</Text>
+          <Text className="font-normal text-amber-900 text-base my-2">{bio}</Text>
         </View>
 
         {/* Product List */}

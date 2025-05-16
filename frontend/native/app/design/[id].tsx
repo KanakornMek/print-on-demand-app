@@ -5,18 +5,20 @@ import { canGoBack } from 'expo-router/build/global-state/routing';
 import { useRouter } from 'expo-router';
 import Feather from '@expo/vector-icons/Feather';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '@clerk/clerk-expo';
 
 export default function ImagePickerExample() {
 const router = useRouter();
   const [image, setImage] = useState<string | null>(null);
-  
+  const [resImage, setResImage] = useState<string | null>(null);
 
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+    const { getToken } = useAuth();
+  
   const pickImage = async () => {
-    // No permissions request is necessary for launching the image library
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images', 'videos'],
       allowsEditing: true,
-    //   aspect: [4, 3],
       quality: 1,
     });
 
@@ -26,6 +28,34 @@ const router = useRouter();
       setImage(result.assets[0].uri);
     }
   };
+
+  const handleImageUpload = async () => {
+    if (!image) return;
+
+    const formData = new FormData();
+    formData.append('file', {
+      uri: image,
+      name: 'image.jpg',
+      type: 'image/jpeg',
+    } as any);
+
+    try {
+      const response = await fetch(`${apiUrl}/api/printed-on-shirt`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const data = await response.json();
+      setResImage(data.imageUrl);
+      console.log('Upload success:', data);
+    } catch (error) {
+      console.error('Upload error:', error);
+    }
+  };
+
 
   return (
     <SafeAreaView className="flex-1 bg-amber-50" edges={['top']}>
