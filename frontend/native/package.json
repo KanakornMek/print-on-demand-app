@@ -28,6 +28,8 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.2",
+    "react-native-keyboard-aware-scroll-view": "^0.9.5",
+    "react-native-keyboard-aware-scrollview": "^2.1.0",
     "react-native-markdown-display": "^7.0.2",
     "react-native-markdown-package": "^1.8.2",
     "react-native-read-more-text": "^1.1.2",

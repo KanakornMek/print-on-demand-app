@@ -31,9 +31,10 @@ interface Design {
 
 export default function StoreDetailScreen() {
   const { id, bio } = useLocalSearchParams<{ id: string, bio?: string }>();
+  const [isStoreOwner, setIsStoreOwner] = useState(false);
 
 
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
   const apiUrl = process.env.EXPO_PUBLIC_API_URL;
 
   const { user } = useUser();
@@ -45,6 +46,13 @@ export default function StoreDetailScreen() {
     username: '',
     profile_image_url: '',
   });
+
+  useEffect(() => {
+    if(userId === store.clerk_user_id){
+      setIsStoreOwner(true);
+    }
+
+  }, [store])
 
   useFocusEffect(
     useCallback(() => {
@@ -180,6 +188,14 @@ export default function StoreDetailScreen() {
               />
             )}
           />
+          {isStoreOwner && (
+            <TouchableOpacity
+              className="size-[36] bg-amber-500 absolute bottom-5 right-5 rounded-full overflow-hidden items-center justify-center"
+              onPress={() => router.push(`/design`)}
+            >
+              <Feather name="plus" size={22} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </SafeAreaView>

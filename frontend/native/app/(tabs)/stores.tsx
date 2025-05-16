@@ -117,22 +117,27 @@ export default function StoresScreen() {
                         <View className='px-[16px]'>
                             <View className='py-4 gap-2'>
                                 <Text className="font-medium text-amber-900 text-lg"> My Store </Text>
-                                <TouchableOpacity onPress={() => router.push(`/store/${stores}`)} className='items-center' >
-                                    <View className='rounded-2xl w-full bg-white h-fit shadow-sm p-4 flex-row'>
-                                        <View className='rounded-full size-[6rem] bg-slate-200 overflow-hidden justify-center items-center'>
-                                        <Image
-                                            source={user?.imageUrl || "https://placehold.co/80"}
-                                            style={{ width: 80, height: 80, borderRadius: 9999 }}
-
-                                            contentFit="cover"
-                                        />
-                                        </View>
-                                        <View className='w-fit h-[6rem] py-4 px-4 justify-center gap-2'>
-                                            <Text className="font-medium text-amber-900 text-base" >{user?.firstName}</Text>
-                                            <Text className="font-medium text-amber-900 text-base" >{bio[6]}</Text>
-                                        </View>
-                                    </View>
-                                </TouchableOpacity>
+                                {(() => {
+                                    const myStore = stores.find(store => store.clerk_user_id === user?.id);
+                                    if (!myStore) return null;
+                                    return (
+                                        <TouchableOpacity onPress={() => router.push(`/store/${myStore.id}?bio=${encodeURIComponent(bio[6])}`)} className='items-center' >
+                                            <View className='rounded-2xl w-full bg-white h-fit shadow-sm p-4 flex-row'>
+                                                <View className='rounded-full size-[6rem] bg-slate-200 overflow-hidden justify-center items-center'>
+                                                    <Image
+                                                        source={user?.imageUrl || "https://placehold.co/80"}
+                                                        style={{ width: 80, height: 80, borderRadius: 9999 }}
+                                                        contentFit="cover"
+                                                    />
+                                                </View>
+                                                <View className='w-fit h-[6rem] py-4 px-4 justify-center gap-2'>
+                                                    <Text className="font-medium text-amber-900 text-base" >{user?.firstName}</Text>
+                                                    <Text className="font-medium text-amber-900 text-base" >{bio[6]}</Text>
+                                                </View>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })()}
                                 
                             </View>
                             <View className='py-4 gap-2'>
