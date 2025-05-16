@@ -58,7 +58,7 @@ def overlay_images(shirt_image, design_image, placement_box):
 
         combined_image = Image.alpha_composite(shirt_image, temp_shirt_overlay)
 
-        return combined_image.convert("RGB")
+        return combined_image.convert("RGBA")
 
     except Exception as e:
         print(f"Error during image overlay: {e}")
