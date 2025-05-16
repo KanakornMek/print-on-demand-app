@@ -4,7 +4,7 @@ from io import BytesIO
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 DESIGN_MAX_SIZE_PERCENT = 0.8 
-DESIGN_PLACEMENT_BOX = (210, 100, 390, 280)
+DESIGN_PLACEMENT_BOX = (210, 120, 390, 300)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
