@@ -1054,7 +1054,7 @@ def create_design(clerk_user_id):
     name = data.get('name')
 
     if not product_id or not isinstance(product_id, int):
-        return jsonify({"error": "Missing or invalid 'variant_id'"}), 400
+        return jsonify({"error": "Missing or invalid 'product_id'"}), 400
     if not final_product_image_url or not isinstance(final_product_image_url, str):
         return jsonify({"error": "Missing or invalid 'final_product_image_url'"}), 400
     if name and not isinstance(name, str):
@@ -1285,7 +1285,7 @@ def print_on_shirt():
     # if not shirt_image_url:
     #     return jsonify({"error": "Missing 'shirt_image_url' in form data"}), 400
 
-    shirt_image_url = "https://blob.apliiq.com/sitestorage/resized-products/4159488_4461_577_880.jpg?v=1"
+    shirt_image_url = "https://www.craftclothing.ph/cdn/shop/files/standard-plain-round-neck-shirt-white_49d15c1b-697e-45e2-b40b-29807d377b6e_600x.png?v=1740991398"
 
     if 'design_image' not in request.files:
         return jsonify({"error": "No 'design_image' file part in the request"}), 400
