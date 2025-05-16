@@ -118,7 +118,7 @@ const router = useRouter();
                     <TouchableOpacity
                         className={`w-full items-center rounded-md bg-amber-400 py-2`}
                         onPress={
-                            () => {}
+                            () => {router.push('/preview/123')}
                         }
                         activeOpacity = {0.35}
                     >

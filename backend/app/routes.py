@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from flask import Blueprint, abort, current_app, json, jsonify, request, send_file
 from .models import Item, Order, OrderItem, User, Product, ProductVariant, ProductCategory, Design, CartItem, Address, ShippingOption, db
-from .auth import clerk_auth_required
+from .auth import clerk_auth_required, sdk
+
 from svix import Webhook, WebhookVerificationError
 import os
 from sqlalchemy import and_
@@ -156,6 +157,59 @@ def get_profile(clerk_user_id):
             return jsonify(user.to_dict())
         else:
             return jsonify({"error": "User not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@main_bp.route('/api/users', methods=['GET'])
+@clerk_auth_required
+def get_users(clerk_user_id):
+    try:
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 20, type=int)
+
+        if page < 1:
+            page = 1
+        if limit < 1:
+            limit = 20
+
+        users_query = User.query.order_by(User.created_at.desc())
+        paginated_users = users_query.paginate(page=page, per_page=limit, error_out=False)
+        
+        users_list_response = []
+        for user in paginated_users.items:
+            user_dict = user.to_dict()
+            clerk_user_data = sdk.users.get(user_id=user.clerk_user_id)
+            user_dict["profile_image_url"] = clerk_user_data.profile_image_url
+            users_list_response.append(user_dict)
+
+        return jsonify({
+            "users": users_list_response,
+            "pagination": {
+                "total_items": paginated_users.total,
+                "total_pages": paginated_users.pages,
+                "current_page": paginated_users.page,
+                "next_page": paginated_users.next_page_num if paginated_users.has_next else None,
+                "prev_page": paginated_users.prev_page_num if paginated_users.has_prev else None
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@main_bp.route('/api/users/<int:user_id>', methods=['GET'])
+@clerk_auth_required
+def get_user_details(clerk_user_id, user_id):
+    try:
+        user = User.query.filter_by(id=user_id).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        user_dict = user.to_dict()
+        clerk_user_data = sdk.users.get(user_id=user.clerk_user_id)
+        user_dict["profile_image_url"] = clerk_user_data.profile_image_url
+
+        return jsonify(user_dict), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -869,7 +923,6 @@ def create_order(clerk_user_id):
         order_response_data['items'] = [oi.to_dict() for oi in new_order.items]
         order_response_data['shipping_address'] = new_order.shipping_address.to_dict() if new_order.shipping_address else None
         order_response_data['billing_address'] = new_order.billing_address.to_dict() if new_order.billing_address else None
-        order_response_data["items"] = [item.to_dict() for item in order_response_data["items"]]
 
         return jsonify({"message": "Order placed successfully", "order": order_response_data}), 201
 
@@ -912,6 +965,12 @@ def get_orders(clerk_user_id):
         for order in paginated_orders.items:
             order_dict = order.to_dict() 
             order_dict["id"] = f"ORD{order.id:05d}"
+            order_items_list = []
+            if order.items:
+                for item in order.items:
+                    order_items_list.append(item.to_dict()) 
+            
+            order_dict["items"] = order_items_list
 
             orders_list_response.append(order_dict)
 
@@ -1175,6 +1234,43 @@ def delete_design(clerk_user_id, design_id):
         current_app.logger.error(f"Error deleting design {design_id}: {str(e)}")
         return jsonify({"error": "Failed to delete design", "details": str(e)}), 500
 
+@main_bp.route('/api/designs/user/<int:user_id>', methods=['GET'])
+@clerk_auth_required
+def get_user_designs_by_user_id(clerk_user_id, user_id):
+    user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    try:
+        designs_query = Design.query.filter_by(user_id=user_id)\
+            .options(
+                joinedload(Design.product),
+                joinedload(Design.user)
+            ).order_by(Design.created_at.desc())
+        
+        designs = designs_query.all()
+
+        designs_data = []
+        for design in designs:
+            design_dict = design.to_dict()
+            if design.product:
+                design_dict['product_details'] = design.product.to_dict()
+            else:
+                design_dict['product_details'] = None
+            
+            if design.user:
+                design_dict['creator_name'] = design.user.username
+            else:
+                design_dict['creator_name'] = "Unknown"
+                
+            designs_data.append(design_dict)
+
+        return jsonify({
+            "data": designs_data
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"Error fetching user {user_id} designs: {str(e)}")
+        return jsonify({"error": "Failed to fetch designs", "details": str(e)}), 500
 
 from .print_on_shirt import overlay_images, fetch_image_from_url, allowed_file, Image, DESIGN_PLACEMENT_BOX, BytesIO
 import uuid
