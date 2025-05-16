@@ -76,7 +76,7 @@ export default function StoreDetailScreen() {
                 name={item.name}
                 creator={item.creator}
                 price={item.price}
-                onPress={() => router.push('/design/123')}
+                onPress={() => router.push('/product/123')}
               />
             )}
           />
