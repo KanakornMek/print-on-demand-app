@@ -194,6 +194,7 @@ def get_users(clerk_user_id):
         }), 200
 
     except Exception as e:
+        current_app.logger.error(f"Error in /api/users endpoint: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
 @main_bp.route('/api/users/<int:user_id>', methods=['GET'])
@@ -1048,25 +1049,25 @@ def create_design(clerk_user_id):
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    variant_id = data.get('variant_id')
+    product_id = data.get('product_id')
     final_product_image_url = data.get('final_product_image_url')
     name = data.get('name')
 
-    if not variant_id or not isinstance(variant_id, int):
-        return jsonify({"error": "Missing or invalid 'variant_id'"}), 400
+    if not product_id or not isinstance(product_id, int):
+        return jsonify({"error": "Missing or invalid 'product_id'"}), 400
     if not final_product_image_url or not isinstance(final_product_image_url, str):
         return jsonify({"error": "Missing or invalid 'final_product_image_url'"}), 400
     if name and not isinstance(name, str):
         return jsonify({"error": "Invalid 'name', must be a string"}), 400
 
-    variant = ProductVariant.query.get(variant_id)
+    variant = Product.query.get(product_id)
     if not variant:
         return jsonify({"error": "ProductVariant not found"}), 404
 
     try:
         new_design = Design(
             user_id=user.id,
-            variant_id=variant_id,
+            product_id=product_id,
             final_product_image_url=final_product_image_url,
             name=name
         )
@@ -1163,6 +1164,10 @@ def get_design_detail(clerk_user_id, design_id):
         
         if design.user:
             design_dict['creator_name'] = design.user.username
+            current_app.logger.info(f"Design user ID: {design.user.clerk_user_id}")
+            clerk_user_data = sdk.users.get(user_id=design.user.clerk_user_id)
+            design_dict["creator_image_url"] = clerk_user_data.profile_image_url
+            
         else:
             design_dict['creator_name'] = "Unknown"
 
@@ -1284,7 +1289,7 @@ def print_on_shirt():
     # if not shirt_image_url:
     #     return jsonify({"error": "Missing 'shirt_image_url' in form data"}), 400
 
-    shirt_image_url = "https://blob.apliiq.com/sitestorage/resized-products/4159488_4461_577_880.jpg?v=1"
+    shirt_image_url = "https://www.craftclothing.ph/cdn/shop/files/standard-plain-round-neck-shirt-white_49d15c1b-697e-45e2-b40b-29807d377b6e_600x.png?v=1740991398"
 
     if 'design_image' not in request.files:
         return jsonify({"error": "No 'design_image' file part in the request"}), 400
