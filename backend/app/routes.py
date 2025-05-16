@@ -194,6 +194,7 @@ def get_users(clerk_user_id):
         }), 200
 
     except Exception as e:
+        current_app.logger.error(f"Error in /api/users endpoint: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
 @main_bp.route('/api/users/<int:user_id>', methods=['GET'])
